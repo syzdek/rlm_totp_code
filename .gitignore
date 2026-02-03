@@ -1,0 +1,14 @@
+*~
+*.a
+*.lo
+*.mode1v3
+*.o
+*.pbxuser
+*.so
+*.swp
+*.xcodeproj
+.DS_Store
+.deps
+.dirstamp
+a.out
+xcuserdata
