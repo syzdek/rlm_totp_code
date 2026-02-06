@@ -258,15 +258,6 @@ totp_xlat_code_sha256(
          size_t                        outlen );
 
 
-static ssize_t
-totp_xlat_code_sha512(
-         void *                        instance,
-         REQUEST *                     request,
-         char const *                  fmt,
-         char *                        out,
-         size_t                        outlen );
-
-
 /////////////////
 //             //
 //  Variables  //
@@ -377,18 +368,6 @@ mod_bootstrap(
       return(-1);
    };
    rc = xlat_register(xlat_name, totp_xlat_code_sha256, NULL, inst);
-   if (rc != 0)
-   {  ERROR("totp_code: failed to register xlat:%s", xlat_name);
-      return(-1);
-   };
-
-   // register xlat:totp_code_sha512
-   rc = snprintf(xlat_name, sizeof(xlat_name), "%s_sha512", inst->name);
-   if ( (rc < 0) || (rc >= MAX_STRING_LEN) )
-   {  ERROR("totp_code: xlat name \"%s_sha512\" exceeds maximum name length", inst->name);
-      return(-1);
-   };
-   rc = xlat_register(xlat_name, totp_xlat_code_sha512, NULL, inst);
    if (rc != 0)
    {  ERROR("totp_code: failed to register xlat:%s", xlat_name);
       return(-1);
@@ -963,18 +942,5 @@ totp_xlat_code_sha256(
 {
    return(totp_xlat_code(instance, request, fmt, out, outlen, RLM_TOTP_HMAC_SHA256));
 }
-
-
-ssize_t
-totp_xlat_code_sha512(
-         UNUSED void *                 instance,
-         REQUEST *                     request,
-         char const *                  fmt,
-         char *                        out,
-         size_t                        outlen )
-{
-   return(totp_xlat_code(instance, request, fmt, out, outlen, RLM_TOTP_HMAC_SHA512));
-}
-
 
 /* end of source */
