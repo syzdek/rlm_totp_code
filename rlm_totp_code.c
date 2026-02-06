@@ -242,10 +242,11 @@ static const CONF_PARSER module_config[] =
 {  {  "time_start",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),          "0" },
    {  "time_step",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_x),           "30" },
    {  "time_adjustment",   FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_adjust), "0" },
-   {  "digits_len",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, digits_len),       "6" },
+   {  "code_length",      FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, digits_len),       "6" },
    {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),      "no" },
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),      "no" },
    {  "hmac_hash",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_hmacstr),     "HmacSHA1" },
+   {  "user_attribute",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, user_attrnam),     "User-Name" },
    CONF_PARSER_TERMINATOR
 };
 
@@ -836,6 +837,7 @@ inline totp_xlat_code(
       RDEBUG("rlm_totp_code: key:            <binary>\n");
       RDEBUG("rlm_totp_code: key_len:        %u\n",  (unsigned)key_len);
       RDEBUG("rlm_totp_code: result:         %0*i\n",  inst->digits_len, code);
+      RDEBUG("rlm_totp_code: result_len:     %i\n",  inst->digits_len);
    };
    if (code < 0)
    {  *out = '\0';
