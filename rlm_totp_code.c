@@ -76,6 +76,11 @@
 //////////////
 // MARK: - Macros
 
+#ifndef HAVE_PTHREAD_H
+#  define pthread_mutex_lock(_x)    rad_assert(_x == NULL)
+#  define pthread_mutex_unlock(_x)  rad_assert(_x == NULL)
+#endif // !HAVE_PTHREAD_H
+
 
 ///////////////////
 //               //
@@ -107,11 +112,6 @@
 
 typedef struct rlm_totp_code_t   rlm_totp_code_t;
 typedef struct _totp_used        totp_used_t;
-#ifdef HAVE_PTHREAD_H
-typedef pthread_mutex_t          totp_mutex_t;
-#else
-typedef int                      totp_mutex_t;
-#endif
 
 
 // modules's structure for the configuration variables
@@ -125,9 +125,11 @@ struct rlm_totp_code_t
    bool              allow_reuse;            //!< allow TOTP codes to be re-used
    bool              devel_debug;            //!< enable extra debug messages for developer
    int               totp_hmac;              //!< HMAC cryptographic hash function
-   totp_mutex_t *    mutex;
    rbtree_t *        used_tree;
    fr_dlist_t        used_list;
+#ifdef HAVE_PTHREAD_H
+   pthread_mutex_t * mutex;
+#endif // HAVE_PTHREAD_H
 };
 
 
@@ -213,27 +215,6 @@ totp_hmac(
          size_t                        data_len,
          const uint8_t *               key,
          size_t                        key_len );
-
-
-static int
-totp_mutex_alloc(
-         UNUSED void *                 instance,
-         UNUSED totp_mutex_t **        mutexp );
-
-
-static int
-totp_mutex_free(
-         UNUSED totp_mutex_t **        mutexp );
-
-
-inline int
-totp_mutex_lock(
-         UNUSED totp_mutex_t *         mutex );
-
-
-inline int
-totp_mutex_unlock(
-         UNUSED totp_mutex_t *         mutex );
 
 
 static int
@@ -445,7 +426,13 @@ mod_detach(
    inst = instance;
 
    // destroy and free mutex lock
-   totp_mutex_free(&inst->mutex);
+#ifdef HAVE_PTHREAD_H
+   if ((inst->mutex))
+   {  pthread_mutex_destroy(inst->mutex);
+      talloc_free_children(inst->mutex);
+      inst->mutex = NULL;
+   };
+#endif // HAVE_PTHREAD_H
 
    if (inst->used_tree != NULL)
       rbtree_free(inst->used_tree);
@@ -470,8 +457,13 @@ mod_instantiate(
 
    // initialize mutex lock
    inst->mutex = NULL;
-   if (totp_mutex_alloc(instance, &inst->mutex) != 0)
+#ifdef HAVE_PTHREAD_H
+   if ((inst->mutex = talloc_zero(instance, pthread_mutex_t)) == NULL)
+   {  ERROR("totp_code: failed to allocate memory for mutex lock");
       return(-1);
+   };
+   pthread_mutex_init(inst->mutex, NULL);
+#endif // HAVE_PTHREAD_H
 
    FR_INTEGER_BOUND_CHECK("time_step",    inst->totp_x,        >=, 5);
    FR_INTEGER_BOUND_CHECK("digits_len",   inst->digits_len,    >=, 1);
@@ -767,81 +759,6 @@ totp_hmac(
 }
 
 
-inline int
-totp_mutex_alloc(
-         UNUSED void *                 instance,
-         UNUSED totp_mutex_t **        mutexp )
-{
-   totp_mutex_t *       mutex;
-
-   rad_assert(instance  != NULL);
-   rad_assert(mutexp    != NULL);
-
-   *mutexp = NULL;
-
-#ifdef HAVE_PTHREAD_H
-   if ((mutex = talloc_zero(instance, totp_mutex_t)) == NULL)
-   {  ERROR("totp_code: failed to allocate memory for mutex lock");
-      return(-1);
-   };
-   pthread_mutex_init(mutex, NULL);
-#endif
-
-   *mutexp = mutex;
-
-   return(0);
-}
-
-
-inline int
-totp_mutex_free(
-         totp_mutex_t **               mutexp )
-{
-   rad_assert(mutexp != NULL);
-
-   if (*mutexp == NULL)
-      return(0);
-
-#ifdef HAVE_PTHREAD_H
-   pthread_mutex_destroy(*mutexp);
-#endif
-
-   talloc_free(*mutexp);
-
-   *mutexp = NULL;
-
-   return(0);
-}
-
-
-inline int
-totp_mutex_lock(
-         UNUSED totp_mutex_t *         mutex )
-{
-#ifdef HAVE_PTHREAD_H
-   rad_assert(mutex != NULL);
-   return(pthread_mutex_lock(mutex));
-#else
-   rad_assert(mutex == NULL);
-   return(0);
-#endif
-}
-
-
-inline int
-totp_mutex_unlock(
-         UNUSED totp_mutex_t *         mutex )
-{
-#ifdef HAVE_PTHREAD_H
-   rad_assert(mutex != NULL);
-   return(pthread_mutex_unlock(mutex));
-#else
-   rad_assert(mutex == NULL);
-   return(0);
-#endif
-}
-
-
 int
 totp_used_cmp(
          const void *                  ptr_a,
@@ -864,13 +781,13 @@ totp_used_free(
    entry = (totp_used_t *)ptr;
    inst  = entry->instance;
 
-   totp_mutex_lock(inst->mutex);
+   pthread_mutex_lock(inst->mutex);
 
    if ((entry->key))
       free(entry->key);
    free(entry);
 
-   totp_mutex_unlock(inst->mutex);
+   pthread_mutex_unlock(inst->mutex);
 
    return;
 }
