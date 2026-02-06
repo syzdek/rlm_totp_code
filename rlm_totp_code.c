@@ -118,6 +118,8 @@ typedef struct _totp_used        totp_used_t;
 struct rlm_totp_code_t
 {  char const *      name;                   //!< name of this instance */
    const char *      totp_hmacstr;           //!< name of HMAC cryptographic hash function
+   const char *      user_attrnam;           //!< name of User-Name attribute to use as unique identifier
+   const DICT_ATTR * user_attr;              //!< dictionary entry for user attribute
    uint32_t          totp_t0;                //!< Unix time to start counting time steps (default: 0)
    uint32_t          totp_x;                 //!< time step in seconds (default: 30 seconds)
    int32_t           totp_time_adjust;       //!< adjust current time by seconds
@@ -134,11 +136,11 @@ struct rlm_totp_code_t
 
 
 struct _totp_used
-{  uint8_t *      key;
-   size_t         keylen;
-   time_t         last_interval_count;
-   void *         instance;
-   fr_dlist_t     dlist;
+{  uint8_t *         key;              //!< value of User-Name attribute
+   size_t            keylen;           //!< length of User-Name attribute
+   time_t            entry_expires;    //!< epoch time when last used code will expire
+   totp_used_t *     prev;
+   totp_used_t *     next;
 };
 
 
@@ -398,11 +400,18 @@ mod_instantiate(
       inst->totp_hmac = RLM_TOTP_HMAC_SHA1;
    };
 
-   inst->used_tree = rbtree_create(instance, totp_used_cmp, totp_used_free, 0);
-   if (inst->used_tree == NULL)
+   if ((inst->user_attr = dict_attrbyname(inst->user_attrnam)) == NULL)
+   {  ERROR("totp_code (%s): '%s' attribute not found in dictionary", inst->name, inst->user_attrnam);
       return(-1);
+   };
 
-   fr_dlist_entry_init(&inst->used_list);
+   // initialize cache and list
+   if (!(inst->allow_reuse))
+   {  inst->used_tree = rbtree_create(instance, totp_used_cmp, totp_used_free, 0);
+      if (inst->used_tree == NULL)
+         return(-1);
+      fr_dlist_entry_init(&inst->used_list);
+   };
 
    return(0);
 }
@@ -683,21 +692,14 @@ totp_used_free(
          void *                        ptr )
 {
    totp_used_t *        entry;
-   rlm_totp_code_t *    inst;
 
    if (!(ptr))
       return;
-
-   entry = (totp_used_t *)ptr;
-   inst  = entry->instance;
-
-   pthread_mutex_lock(inst->mutex);
+   entry = ptr;
 
    if ((entry->key))
       free(entry->key);
    free(entry);
-
-   pthread_mutex_unlock(inst->mutex);
 
    return;
 }
