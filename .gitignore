@@ -11,4 +11,10 @@
 .deps
 .dirstamp
 a.out
+freeradius/
+freeradius-server/
+freeradius-server.tmp/
+freeradius-server.tar.gz
+freeradius-server.tar.gz.tmp
+freeradius-server-*.*.*/
 xcuserdata
