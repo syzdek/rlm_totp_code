@@ -149,13 +149,6 @@ struct _totp_used
 //////////////////
 // MARK: - Prototypes
 
-static rlm_rcode_t
-mod_authenticate(
-         void *                        instance,
-         REQUEST *                     request )
-         CC_HINT(nonnull);
-
-
 static int
 mod_bootstrap(
          CONF_SECTION *			         conf,
@@ -332,8 +325,7 @@ module_t rlm_totp_code =
    .bootstrap              = mod_bootstrap,
    .detach                 = mod_detach,
    .methods =
-   {  [MOD_AUTHENTICATE]   = mod_authenticate,
-      [MOD_POST_AUTH]      = mod_post_auth
+   {  [MOD_POST_AUTH]      = mod_post_auth
    },
 };
 
@@ -344,15 +336,6 @@ module_t rlm_totp_code =
 //             //
 /////////////////
 // MARK: - Functions
-
-rlm_rcode_t
-mod_authenticate(
-         void *                        instance,
-         REQUEST *                     request )
-{
-   return(RLM_MODULE_OK);
-}
-
 
 int
 mod_bootstrap(
