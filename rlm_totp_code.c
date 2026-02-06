@@ -227,16 +227,6 @@ totp_xlat_code(
          REQUEST *                     request,
          char const *                  fmt,
          char *                        out,
-         size_t                        outlen,
-         int                           hmac_hash );
-
-
-static ssize_t
-totp_xlat_code_default(
-         void *                        instance,
-         REQUEST *                     request,
-         char const *                  fmt,
-         char *                        out,
          size_t                        outlen );
 
 
@@ -316,7 +306,6 @@ mod_bootstrap(
          void *                        instance )
 {
    int                     rc;
-   char                    xlat_name[MAX_STRING_LEN];
 	rlm_totp_code_t *       inst;
 
    inst = instance;
@@ -325,7 +314,7 @@ mod_bootstrap(
       inst->name = cf_section_name1(conf);
 
    // register xlat:totp_code
-   rc = xlat_register(inst->name, totp_xlat_code_default, NULL, inst);
+   rc = xlat_register(inst->name, totp_xlat_code, NULL, inst);
    if (rc != 0)
    {  ERROR("totp_code: failed to register xlat:%s", inst->name);
       return(-1);
@@ -719,8 +708,7 @@ inline totp_xlat_code(
          REQUEST *                     request,
          char const *                  fmt,
          char *                        out,
-         size_t                        outlen,
-         int                           hmac_hash )
+         size_t                        outlen )
 {
    int                     code;
    size_t                  pos;
@@ -839,9 +827,9 @@ inline totp_xlat_code(
       key[key_len] = '\0';
    };
 
-   code = totp_calculate(hmac_hash, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->digits_len, NULL);
+   code = totp_calculate(inst->totp_hmac, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->digits_len, NULL);
    if ((inst->devel_debug))
-   {  RDEBUG("rlm_totp_code: hmac_hash:      %i\n",  (int)hmac_hash);
+   {  RDEBUG("rlm_totp_code: hmac_hash:      %i\n",  (int)inst->totp_hmac);
       RDEBUG("rlm_totp_code: totp_time:      %u\n",  (unsigned)totp_time);
       RDEBUG("rlm_totp_code: inst->totp_t0:  %u\n",  (unsigned)inst->totp_t0);
       RDEBUG("rlm_totp_code: inst->totp_x:   %u\n",  (unsigned)inst->totp_x);
@@ -861,20 +849,6 @@ inline totp_xlat_code(
    };
 
    return(0);
-}
-
-
-ssize_t
-totp_xlat_code_default(
-         void *                        instance,
-         REQUEST *                     request,
-         char const *                  fmt,
-         char *                        out,
-         size_t                        outlen )
-{
-   rlm_totp_code_t *    inst;
-   inst = instance;
-   return(totp_xlat_code(instance, request, fmt, out, outlen, inst->totp_hmac));
 }
 
 
