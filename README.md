@@ -45,11 +45,11 @@ Module Configuration
      calculations.  If not compiled with OpenSSL support, this option has no
      affect. The default is "_sha1_".
 
-   * ___digits___ - specifies the number of digits of the One-Time-Password
+   * ___otp_length___ - specifies the number of digits of the One-Time-Password
      to return.  This is the value of "_Digit_" in RFC4226. The default is
      "_6_".
 
-   * ___time_adjustment___ - specifies the number of seconds to add to the
+   * ___time_offset___ - specifies the number of seconds to add to the
      current UNIX time.  This can be used to increase or decrease the value
      of "_T_" used in RFC6238.  The default is "_0_".
 
@@ -76,8 +76,8 @@ The following is a example configuration which uses the default values:
          unix_time         = 0
          time_step         = 30
          algorithm         = "sha1"
-         time_adjustment   = 0
-         digits            = 6
+         time_offset       = 0
+         otp_length        = 6
          allow_reuse       = false
          allow_override    = false
          devel_debug       = false

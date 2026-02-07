@@ -130,8 +130,8 @@ struct rlm_totp_code_t
    const DICT_ATTR * user_attr;              //!< dictionary entry for user attribute
    uint32_t          totp_t0;                //!< Unix time to start counting time steps (default: 0)
    uint32_t          totp_x;                 //!< time step in seconds (default: 30 seconds)
-   int32_t           totp_time_adjust;       //!< adjust current time by seconds
-   uint32_t          digits_len;             //!< length of output TOTP code
+   int32_t           totp_time_offset;       //!< adjust current time by seconds
+   uint32_t          otp_length;             //!< length of output TOTP code
    bool              allow_override;         //!< allow TOTP parameters to be overriden by RADIUS attributes
    bool              allow_reuse;            //!< allow TOTP codes to be re-used
    bool              devel_debug;            //!< enable extra debug messages for developer
@@ -271,8 +271,8 @@ totp_xlat_code(
 static const CONF_PARSER module_config[] =
 {  {  "unix_time",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),          "0" },
    {  "time_step",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_x),           "30" },
-   {  "time_adjustment",   FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_adjust), "0" },
-   {  "digits",            FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, digits_len),       "6" },
+   {  "time_offset",       FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_offset), "0" },
+   {  "otp_length",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, otp_length),       "6" },
    {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),      "no" },
    {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),   "no" },
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),      "no" },
@@ -423,8 +423,8 @@ mod_instantiate(
 #endif // HAVE_PTHREAD_H
 
    FR_INTEGER_BOUND_CHECK("time_step",    inst->totp_x,        >=, 5);
-   FR_INTEGER_BOUND_CHECK("digits_len",   inst->digits_len,    >=, 1);
-   FR_INTEGER_BOUND_CHECK("digits_len",   inst->digits_len,    <=, 9);
+   FR_INTEGER_BOUND_CHECK("otp_length",   inst->otp_length,    >=, 1);
+   FR_INTEGER_BOUND_CHECK("otp_length",   inst->otp_length,    <=, 9);
 
    if ((inst->totp_algo = totp_algorithm_id(inst->totp_algo_str)) == -1)
    {  WARN("Ignoring \"algorithm = %s\", forcing to \"algorithm = SHA1\"", inst->totp_algo_str);
@@ -853,7 +853,7 @@ totp_xlat_code(
 
    // retreieve current time
    totp_time  = time(NULL);
-   totp_time += inst->totp_time_adjust;
+   totp_time += inst->totp_time_offset;
 
    // skip leading white space
    while (isspace((uint8_t) *fmt))
@@ -941,7 +941,7 @@ totp_xlat_code(
       key[key_len] = '\0';
    };
 
-   code = totp_calculate(inst->totp_algo, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->digits_len, NULL);
+   code = totp_calculate(inst->totp_algo, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->otp_length, NULL);
    if ((inst->devel_debug))
    {  RDEBUG("rlm_totp_code: totp_algo:      %s\n",  totp_algorithm_name(inst->totp_algo));
       RDEBUG("rlm_totp_code: totp_time:      %u\n",  (unsigned)totp_time);
@@ -949,15 +949,15 @@ totp_xlat_code(
       RDEBUG("rlm_totp_code: inst->totp_x:   %u\n",  (unsigned)inst->totp_x);
       RDEBUG("rlm_totp_code: key:            <binary>\n");
       RDEBUG("rlm_totp_code: key_len:        %u\n",  (unsigned)key_len);
-      RDEBUG("rlm_totp_code: result:         %0*i\n",  inst->digits_len, code);
-      RDEBUG("rlm_totp_code: result_len:     %i\n",  inst->digits_len);
+      RDEBUG("rlm_totp_code: result:         %0*i\n",  inst->otp_length, code);
+      RDEBUG("rlm_totp_code: result_len:     %i\n",  inst->otp_length);
    };
    if (code < 0)
    {  *out = '\0';
       return(-1);
    };
 
-   if ((size_t)snprintf(out, outlen, "%0*i" , (int)inst->digits_len, (int)code) >= outlen)
+   if ((size_t)snprintf(out, outlen, "%0*i" , (int)inst->otp_length, (int)code) >= outlen)
    {  REDEBUG("Insufficient space to write TOTP code");
       *out = '\0';
       return(-1);
