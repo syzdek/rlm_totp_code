@@ -193,7 +193,7 @@ totp_algorithm_name(
          int                           algo_id );
 
 
-extern ssize_t
+static ssize_t
 totp_base32_decode(
          uint8_t *                     dst,
          size_t                        dstlen,
