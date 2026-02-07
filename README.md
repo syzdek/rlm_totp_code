@@ -128,6 +128,22 @@ The following is an example of a server using TOTP and MS-CHAP:
       }
 
 
+Installing Module
+-----------------
+
+The rlm_totp_code module must be compiled when the FreeRADIUS server is
+compiled.  First download the source code for the FreeRADIUS server and 
+rlm_totp_code.
+
+Unpack the source code:
+
+    tar -xf freeradius-server-x.x.x.tar.gz
+    tar -xf rlm_totp_code-x.x.tar.gz
+    mv rlm_totp_code-x.x freeradius-server-x.x.x/src/modules/rlm_totp_code
+
+Follow the for building FreeRADIUS server from source (see below for links).
+
+
 References
 ----------
 
@@ -137,6 +153,10 @@ References
      - [FreeRADIUS Development](https://www.freeradius.org/documentation/freeradius-server/current/developers/)
      - [Creating modules for FreeRADIUS v3.0.x](https://wiki.freeradius.org/contributing/Modules3)
      - [Documentation Guidelines](https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/guidelines.html)
+
+   * Compiling FreeRADIUS
+     - [Building from Source](https://www.freeradius.org/documentation/freeradius-server/current/installation/source.html)
+     - [Building FreeRADIUS](https://wiki.freeradius.org/building/Home)
 
    * Standards:
      - [RFC 4226: HOTP: An HMAC-Based One-Time Password Algorithm](https://www.rfc-editor.org/rfc/rfc4226.html)
