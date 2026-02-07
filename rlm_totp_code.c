@@ -118,6 +118,7 @@
 
 
 typedef struct rlm_totp_code_t   rlm_totp_code_t;
+typedef struct _totp_algorithm   totp_algo_t;
 typedef struct _totp_used        totp_used_t;
 
 
@@ -140,6 +141,12 @@ struct rlm_totp_code_t
 #ifdef HAVE_PTHREAD_H
    pthread_mutex_t * mutex;
 #endif // HAVE_PTHREAD_H
+};
+
+
+struct _totp_algorithm
+{  const char *      name;
+   int               id;
 };
 
 
@@ -324,10 +331,7 @@ module_t rlm_totp_code =
 };
 
 
-static struct
-{  const char *      name;
-   int               id;
-} totp_algorithm_map[] =
+static totp_algo_t totp_algorithm_map[] =
 {  {  .name = "sha1",   .id = RLM_TOTP_HMAC_SHA1 },
 #ifdef HAVE_OPENSSL_EVP_H
    {  .name = "sha224", .id = RLM_TOTP_HMAC_SHA224 },
