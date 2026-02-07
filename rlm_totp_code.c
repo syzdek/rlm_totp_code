@@ -105,6 +105,7 @@
 #   define RLM_TOTP_DIGEST_LENGTH   SHA1_DIGEST_LENGTH
 #endif
 
+
 //////////////////
 //              //
 //  Data Types  //
@@ -257,7 +258,7 @@ static const CONF_PARSER module_config[] =
 {  {  "time_start",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),          "0" },
    {  "time_step",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_x),           "30" },
    {  "time_adjustment",   FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_adjust), "0" },
-   {  "code_length",      FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, digits_len),       "6" },
+   {  "code_length",       FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, digits_len),       "6" },
    {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),      "no" },
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),      "no" },
    {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),    "HmacSHA1" },
