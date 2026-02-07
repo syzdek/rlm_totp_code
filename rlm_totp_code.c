@@ -120,6 +120,7 @@
 typedef struct rlm_totp_code_t   rlm_totp_code_t;
 typedef struct _totp_algorithm   totp_algo_t;
 typedef struct _totp_used        totp_used_t;
+typedef struct _totp_params      totp_params_t;
 
 
 // modules's structure for the configuration variables
@@ -156,6 +157,18 @@ struct _totp_used
    time_t            entry_expires;    //!< epoch time when last used code will expire
    totp_used_t *     prev;
    totp_used_t *     next;
+};
+
+
+struct _totp_params
+{  uint64_t          totp_t0;          //!< Unix time to start counting time steps
+   uint64_t          totp_x;           //!< time step in seconds
+   uint64_t          totp_cur_unix;    //!< current Unix time
+   uint64_t          totp_t;           //!< number of time steps since t0
+   int64_t           totp_time_offset; //!< amount of seconds to adjust .totp_cur_unix
+   size_t            otp_length;       //!< requested length of One-Time-Password
+   size_t            key_len;          //!< length of HMAC key
+   const uint8_t *   key;              //!< HAMC key
 };
 
 
