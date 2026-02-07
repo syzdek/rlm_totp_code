@@ -753,7 +753,7 @@ totp_used_free(
 
 
 ssize_t
-inline totp_xlat_code(
+totp_xlat_code(
          UNUSED void *                 instance,
          REQUEST *                     request,
          char const *                  fmt,
