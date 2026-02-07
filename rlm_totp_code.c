@@ -120,7 +120,7 @@ typedef struct _totp_used        totp_used_t;
 // modules's structure for the configuration variables
 struct rlm_totp_code_t
 {  char const *      name;                   //!< name of this instance */
-   const char *      totp_hmacstr;           //!< name of HMAC cryptographic hash function
+   const char *      totp_algo_str;          //!< name of HMAC cryptographic algorithm
    const char *      user_attrnam;           //!< name of User-Name attribute to use as unique identifier
    const DICT_ATTR * user_attr;              //!< dictionary entry for user attribute
    uint32_t          totp_t0;                //!< Unix time to start counting time steps (default: 0)
@@ -129,7 +129,7 @@ struct rlm_totp_code_t
    uint32_t          digits_len;             //!< length of output TOTP code
    bool              allow_reuse;            //!< allow TOTP codes to be re-used
    bool              devel_debug;            //!< enable extra debug messages for developer
-   int               totp_hmac;              //!< HMAC cryptographic hash function
+   int               totp_algo;              //!< HMAC cryptographic algorithm
    rbtree_t *        used_tree;
    fr_dlist_t        used_list;
 #ifdef HAVE_PTHREAD_H
@@ -204,7 +204,7 @@ totp_base32_verify(
 
 static int
 totp_calculate(
-         int                           hmac_hash,
+         int                           totp_algo,
          uint64_t                      totp_t0,
          uint64_t                      totp_x,
          uint64_t                      totp_time,
@@ -216,7 +216,7 @@ totp_calculate(
 
 static void
 totp_hmac(
-         UNUSED int                    hmac_hash,
+         UNUSED int                    totp_algo,
          uint8_t *                     digest,
          unsigned *                    digest_lenp,
          const uint8_t *               data,
@@ -260,7 +260,7 @@ static const CONF_PARSER module_config[] =
    {  "code_length",      FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, digits_len),       "6" },
    {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),      "no" },
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),      "no" },
-   {  "hmac_hash",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_hmacstr),     "HmacSHA1" },
+   {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),    "HmacSHA1" },
    {  "user_attribute",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, user_attrnam),     "User-Name" },
    CONF_PARSER_TERMINATOR
 };
@@ -410,9 +410,9 @@ mod_instantiate(
    FR_INTEGER_BOUND_CHECK("digits_len",   inst->digits_len,    >=, 1);
    FR_INTEGER_BOUND_CHECK("digits_len",   inst->digits_len,    <=, 9);
 
-   if ((inst->totp_hmac = totp_algorithm_id(inst->totp_hmacstr)) == -1)
-   {  WARN("Ignoring \"hmac_hash = %s\", forcing to \"hmac_hash = SHA1\"", inst->totp_hmacstr);
-      inst->totp_hmac = RLM_TOTP_HMAC_SHA1;
+   if ((inst->totp_algo = totp_algorithm_id(inst->totp_algo_str)) == -1)
+   {  WARN("Ignoring \"algorithm = %s\", forcing to \"algorithm = SHA1\"", inst->totp_algo_str);
+      inst->totp_algo = RLM_TOTP_HMAC_SHA1;
    };
 
    if ((inst->user_attr = dict_attrbyname(inst->user_attrnam)) == NULL)
@@ -616,7 +616,7 @@ totp_base32_verify(
 
 int
 totp_calculate(
-         int                           hmac_hash,
+         int                           totp_algo,
          uint64_t                      totp_t0,
          uint64_t                      totp_x,
          uint64_t                      totp_time,
@@ -647,7 +647,7 @@ totp_calculate(
    data[7]  =  totp_t        & 0xff;
 
    // calculate HMAC digest
-   totp_hmac(hmac_hash, digest, &digest_len, data, sizeof(data), key, key_len);
+   totp_hmac(totp_algo, digest, &digest_len, data, sizeof(data), key, key_len);
    if (digest_len == 0)
       return(-1);
 
@@ -671,7 +671,7 @@ totp_calculate(
 
 void
 totp_hmac(
-         UNUSED int                    hmac_hash,
+         UNUSED int                    totp_algo,
          uint8_t *                     digest,
          unsigned *                    digest_lenp,
          const uint8_t *               data,
@@ -696,7 +696,7 @@ totp_hmac(
    *digest_lenp = 0;
 
 #ifndef HAVE_OPENSSL_EVP_H
-   if (hmac_hash == RLM_TOTP_HMAC_SHA1)
+   if (totp_algo == RLM_TOTP_HMAC_SHA1)
    {  fr_hmac_sha1(digest, data, data_len, key, key_len);
       *digest_lenp = SHA1_DIGEST_LENGTH;
    };
@@ -704,7 +704,7 @@ totp_hmac(
 
 #ifdef HAVE_OPENSSL_EVP_H
    md_len      = RLM_TOTP_DIGEST_LENGTH;
-   switch(hmac_hash)
+   switch(totp_algo)
    {  case RLM_TOTP_HMAC_MD5:    evp_md = EVP_md5();     break;
       case RLM_TOTP_HMAC_SHA1:   evp_md = EVP_sha1();    break;
       case RLM_TOTP_HMAC_SHA224: evp_md = EVP_sha224();  break;
@@ -874,9 +874,9 @@ inline totp_xlat_code(
       key[key_len] = '\0';
    };
 
-   code = totp_calculate(inst->totp_hmac, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->digits_len, NULL);
+   code = totp_calculate(inst->totp_algo, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->digits_len, NULL);
    if ((inst->devel_debug))
-   {  RDEBUG("rlm_totp_code: hmac_hash:      %s\n",  totp_algorithm_name(inst->totp_hmac));
+   {  RDEBUG("rlm_totp_code: totp_algo:      %s\n",  totp_algorithm_name(inst->totp_algo));
       RDEBUG("rlm_totp_code: totp_time:      %u\n",  (unsigned)totp_time);
       RDEBUG("rlm_totp_code: inst->totp_t0:  %u\n",  (unsigned)inst->totp_t0);
       RDEBUG("rlm_totp_code: inst->totp_x:   %u\n",  (unsigned)inst->totp_x);
