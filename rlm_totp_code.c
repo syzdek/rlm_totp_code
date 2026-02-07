@@ -93,7 +93,6 @@
 #define RLM_TOTP_CODE_EBUFSIZ       -2
 
 #define RLM_TOTP_HMAC_SHA1          1
-#define RLM_TOTP_HMAC_MD5           5
 #define RLM_TOTP_HMAC_SHA224        224
 #define RLM_TOTP_HMAC_SHA256        256
 #define RLM_TOTP_HMAC_SHA384        384
@@ -331,7 +330,6 @@ static struct
 } totp_algorithm_map[] =
 {  {  .name = "sha1",   .id = RLM_TOTP_HMAC_SHA1 },
 #ifdef HAVE_OPENSSL_EVP_H
-   {  .name = "md5",    .id = RLM_TOTP_HMAC_MD5 },
    {  .name = "sha224", .id = RLM_TOTP_HMAC_SHA224 },
    {  .name = "sha256", .id = RLM_TOTP_HMAC_SHA256 },
    {  .name = "sha384", .id = RLM_TOTP_HMAC_SHA384 },
@@ -721,8 +719,7 @@ totp_hmac(
 #ifdef HAVE_OPENSSL_EVP_H
    md_len      = RLM_TOTP_DIGEST_LENGTH;
    switch(totp_algo)
-   {  case RLM_TOTP_HMAC_MD5:    evp_md = EVP_md5();     break;
-      case RLM_TOTP_HMAC_SHA1:   evp_md = EVP_sha1();    break;
+   {  case RLM_TOTP_HMAC_SHA1:   evp_md = EVP_sha1();    break;
       case RLM_TOTP_HMAC_SHA224: evp_md = EVP_sha224();  break;
       case RLM_TOTP_HMAC_SHA256: evp_md = EVP_sha256();  break;
       case RLM_TOTP_HMAC_SHA384: evp_md = EVP_sha384();  break;

@@ -22,7 +22,6 @@ Currently the following HMAC algorithms are supported:
    * Built-in algorithms
      - SHA-1 (sha1)
    * Algorithms requiring OpenSSL
-     - MD5 (md5)
      - SHA-2/SHA-224 (sha224)
      - SHA-2/SHA-256 (sha256)
      - SHA-2/SHA-384 (sha384)
