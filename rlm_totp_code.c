@@ -93,7 +93,10 @@
 #define RLM_TOTP_CODE_EBUFSIZ       -2
 
 #define RLM_TOTP_HMAC_SHA1          1
+#define RLM_TOTP_HMAC_MD5           5
+#define RLM_TOTP_HMAC_SHA224        224
 #define RLM_TOTP_HMAC_SHA256        256
+#define RLM_TOTP_HMAC_SHA384        384
 #define RLM_TOTP_HMAC_SHA512        512
 
 #ifdef EVP_MAX_MD_SIZE
@@ -173,6 +176,16 @@ mod_post_auth(
          void *                        instance,
          REQUEST *                     request)
          CC_HINT(nonnull);
+
+
+static int
+totp_algorithm_id(
+         const char *                  algo_name );
+
+
+static const char *
+totp_algorithm_name(
+         int                           algo_id );
 
 
 extern ssize_t
@@ -296,6 +309,22 @@ module_t rlm_totp_code =
 };
 
 
+static struct
+{  const char *      name;
+   int               id;
+} totp_algorithm_map[] =
+{  {  .name = "sha1",   .id = RLM_TOTP_HMAC_SHA1 },
+#ifdef HAVE_OPENSSL_EVP_H
+   {  .name = "md5",    .id = RLM_TOTP_HMAC_MD5 },
+   {  .name = "sha224", .id = RLM_TOTP_HMAC_SHA224 },
+   {  .name = "sha256", .id = RLM_TOTP_HMAC_SHA256 },
+   {  .name = "sha384", .id = RLM_TOTP_HMAC_SHA384 },
+   {  .name = "sha512", .id = RLM_TOTP_HMAC_SHA512 },
+#endif // HAVE_OPENSSL_EVP_H
+   {  .name = NULL,     .id = 0 }
+};
+
+
 /////////////////
 //             //
 //  Functions  //
@@ -381,21 +410,7 @@ mod_instantiate(
    FR_INTEGER_BOUND_CHECK("digits_len",   inst->digits_len,    >=, 1);
    FR_INTEGER_BOUND_CHECK("digits_len",   inst->digits_len,    <=, 9);
 
-   if (!(strcasecmp(inst->totp_hmacstr, "HmacSHA1")))
-      inst->totp_hmac = RLM_TOTP_HMAC_SHA1;
-#ifdef HAVE_OPENSSL_EVP_H
-   else if (!(strcasecmp(inst->totp_hmacstr, "sha1")))
-      inst->totp_hmac = RLM_TOTP_HMAC_SHA1;
-   else if (!(strcasecmp(inst->totp_hmacstr, "HmacSHA256")))
-      inst->totp_hmac = RLM_TOTP_HMAC_SHA256;
-   else if (!(strcasecmp(inst->totp_hmacstr, "sha256")))
-      inst->totp_hmac = RLM_TOTP_HMAC_SHA256;
-   else if (!(strcasecmp(inst->totp_hmacstr, "HmacSHA512")))
-      inst->totp_hmac = RLM_TOTP_HMAC_SHA512;
-   else if (!(strcasecmp(inst->totp_hmacstr, "sha512")))
-      inst->totp_hmac = RLM_TOTP_HMAC_SHA512;
-#endif // HAVE_OPENSSL_EVP_H
-   else
+   if ((inst->totp_hmac = totp_algorithm_id(inst->totp_hmacstr)) == -1)
    {  WARN("Ignoring \"hmac_hash = %s\", forcing to \"hmac_hash = SHA1\"", inst->totp_hmacstr);
       inst->totp_hmac = RLM_TOTP_HMAC_SHA1;
    };
@@ -423,6 +438,32 @@ mod_post_auth(
          REQUEST *                     request)
 {
    return(RLM_MODULE_NOOP);
+}
+
+
+int
+totp_algorithm_id(
+         const char *                  algo_name )
+{
+   int idx;
+   if (!(strncasecmp(algo_name, "HMAC", 4)))
+      algo_name = &algo_name[4];
+   for(idx = 0; ((totp_algorithm_map[idx].name)); idx++)
+      if (!(strcasecmp(algo_name, totp_algorithm_map[idx].name)))
+         return(totp_algorithm_map[idx].id);
+   return(-1);
+}
+
+
+const char *
+totp_algorithm_name(
+         int                           algo_id )
+{
+   int idx;
+   for(idx = 0; ((totp_algorithm_map[idx].name)); idx++)
+      if (totp_algorithm_map[idx].id == algo_id)
+         return(totp_algorithm_map[idx].name);
+   return("unknown");
 }
 
 
@@ -664,8 +705,11 @@ totp_hmac(
 #ifdef HAVE_OPENSSL_EVP_H
    md_len      = RLM_TOTP_DIGEST_LENGTH;
    switch(hmac_hash)
-   {  case RLM_TOTP_HMAC_SHA1:   evp_md = EVP_sha1();    break;
+   {  case RLM_TOTP_HMAC_MD5:    evp_md = EVP_md5();     break;
+      case RLM_TOTP_HMAC_SHA1:   evp_md = EVP_sha1();    break;
+      case RLM_TOTP_HMAC_SHA224: evp_md = EVP_sha224();  break;
       case RLM_TOTP_HMAC_SHA256: evp_md = EVP_sha256();  break;
+      case RLM_TOTP_HMAC_SHA384: evp_md = EVP_sha384();  break;
       case RLM_TOTP_HMAC_SHA512: evp_md = EVP_sha512();  break;
       default: return;
    };
@@ -832,7 +876,7 @@ inline totp_xlat_code(
 
    code = totp_calculate(inst->totp_hmac, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->digits_len, NULL);
    if ((inst->devel_debug))
-   {  RDEBUG("rlm_totp_code: hmac_hash:      %i\n",  (int)inst->totp_hmac);
+   {  RDEBUG("rlm_totp_code: hmac_hash:      %s\n",  totp_algorithm_name(inst->totp_hmac));
       RDEBUG("rlm_totp_code: totp_time:      %u\n",  (unsigned)totp_time);
       RDEBUG("rlm_totp_code: inst->totp_t0:  %u\n",  (unsigned)inst->totp_t0);
       RDEBUG("rlm_totp_code: inst->totp_x:   %u\n",  (unsigned)inst->totp_x);
