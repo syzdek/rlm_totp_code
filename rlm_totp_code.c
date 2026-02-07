@@ -99,6 +99,10 @@
 #define RLM_TOTP_HMAC_SHA384        384
 #define RLM_TOTP_HMAC_SHA512        512
 
+#define TOTP_SCOPE_CONTROL          0
+#define TOTP_SCOPE_REPLY            1
+#define TOTP_SCOPE_REQUEST          2
+
 #ifdef EVP_MAX_MD_SIZE
 #   define RLM_TOTP_DIGEST_LENGTH   EVP_MAX_MD_SIZE
 #else
@@ -225,6 +229,15 @@ totp_hmac(
          size_t                        data_len,
          const uint8_t *               key,
          size_t                        key_len );
+
+
+static VALUE_PAIR *
+totp_request_vp_by_name(
+         UNUSED void *                 instance,
+         REQUEST *                     request,
+         const char *                  attrstr,
+         size_t                        attrstr_len,
+         int                           default_scope );
 
 
 static int
@@ -725,6 +738,64 @@ totp_hmac(
 }
 
 
+VALUE_PAIR *
+totp_request_vp_by_name(
+         UNUSED void *                 instance,
+         REQUEST *                     request,
+         const char *                  attr_str,
+         size_t                        attr_str_len,
+         int                           default_scope )
+{
+   char                    buffer[MAX_STRING_LEN];
+   char *                  attr_scope;
+   char *                  attr_name;
+   const DICT_ATTR *       da;
+   VALUE_PAIR *            vps;
+
+   rad_assert(instance        != NULL);
+   rad_assert(request         != NULL);
+   rad_assert(attr_str        != NULL);
+   rad_assert(attr_str_len    < sizeof(buffer));
+   rad_assert(attr_str_len    > 0);
+
+   // initialize variables
+   memcpy(buffer, attr_str, attr_str_len);
+   buffer[attr_str_len] = '\0';
+   attr_scope           = NULL;
+   attr_name            = NULL;
+
+   // split attribute scope and attribute name
+   if ((attr_name = strchr(buffer, ':')) != NULL)
+   {  attr_name[0]   = '\0';
+      attr_name      = &attr_name[1];
+      attr_scope     = buffer;
+   };
+   if (attr_name == NULL)
+      attr_name = buffer;
+
+   // retrieve dictionary entry
+   da = dict_attrbyname(attr_name);
+   if (da == NULL)
+      return(NULL);
+
+   // retrieve attribute from request
+   if (attr_scope == NULL)
+   {  switch(default_scope)
+      {  case TOTP_SCOPE_CONTROL:   vps = request->config;      break;
+         case TOTP_SCOPE_REPLY:     vps = request->reply->vps;  break;
+         case TOTP_SCOPE_REQUEST:   vps = request->packet->vps; break;
+         default:                   vps = request->config;      break;
+      };
+   }
+   else if (!(strcasecmp(attr_scope, "control")))  vps = request->config;
+   else if (!(strcasecmp(attr_scope, "reply")))    vps = request->reply->vps;
+   else if (!(strcasecmp(attr_scope, "request")))  vps = request->packet->vps;
+   else return(NULL);
+
+   return(fr_pair_find_by_num(vps, da->attr, da->vendor, TAG_ANY));
+}
+
+
 int
 totp_used_cmp(
          const void *                  ptr_a,
@@ -767,8 +838,7 @@ totp_xlat_code(
    uint8_t *               key;
    time_t                  totp_time;
    const char *            base32;
-   char                    attr_name[MAX_STRING_LEN];
-   const DICT_ATTR *       attr;
+   char                    attr_str[MAX_STRING_LEN];
    VALUE_PAIR *            vp;
 	rlm_totp_code_t *       inst;
 
@@ -810,26 +880,20 @@ totp_xlat_code(
          *out = '\0';
          return(-1);
       };
-      memcpy(attr_name, &base32[1], base32_len-1);
-      attr_name[base32_len-1] = '\0';
+      memcpy(attr_str, &base32[1], base32_len-1);
+      attr_str[base32_len-1] = '\0';
 
-      // lookup attribute in dictionary
-      attr = dict_attrbyname(attr_name);
-      if (!(attr))
-      {  REDEBUG("Unknown referenced attribute in totp_code xlat");
-         *out = '\0';
-         return(-1);
-      };
-      if (attr->type!= PW_TYPE_STRING)
-      {  REDEBUG("referenced attribute %s is not a string", attr_name);
-         *out = '\0';
-         return(-1);
-      };
-
-      // retrieve attribute from request
-      vp = fr_pair_find_by_num(request->config, attr->attr, attr->vendor, TAG_ANY);
+      // retrieve specified value pair
+      vp = totp_request_vp_by_name(instance, request, attr_str, (base32_len-1), TOTP_SCOPE_CONTROL);
       if (!(vp))
-      {  REDEBUG("referenced attribute %s is not set", attr_name);
+      {  REDEBUG("referenced attribute '%s' is not set", attr_str);
+         *out = '\0';
+         return(-1);
+      };
+
+      // check data type
+      if ( (vp->da->type != PW_TYPE_STRING) && (vp->da->type != PW_TYPE_OCTETS) )
+      {  REDEBUG("%s is not a string or octets", attr_str);
          *out = '\0';
          return(-1);
       };
