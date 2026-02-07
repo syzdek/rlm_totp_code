@@ -288,15 +288,15 @@ totp_xlat_code(
 
 // Map configuration file names to internal variables */
 static const CONF_PARSER module_config[] =
-{  {  "unix_time",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),          "0" },
-   {  "time_step",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_x),           "30" },
-   {  "time_offset",       FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_offset), "0" },
-   {  "otp_length",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, otp_length),       "6" },
-   {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),      "no" },
-   {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),   "no" },
-   {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),      "no" },
-   {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),    "HmacSHA1" },
-   {  "user_attribute",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, user_attrnam),     "User-Name" },
+{  {  "unix_time",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),             "0" },
+   {  "time_step",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_x),              "30" },
+   {  "time_offset",       FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_offset),    "0" },
+   {  "otp_length",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, otp_length),          "6" },
+   {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),         "no" },
+   {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),      "no" },
+   {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),         "no" },
+   {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),       "HmacSHA1" },
+   {  "user_attribute",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, user_attrnam),        "User-Name" },
    CONF_PARSER_TERMINATOR
 };
 
