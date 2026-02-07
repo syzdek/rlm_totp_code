@@ -64,34 +64,34 @@ Module Configuration
      which are retrieved from a data store during authentication. The default
      is "_no_".
 
-   * ___vsa_cache_key___ - the RADIUS vendor specific attribute to use as the
-     cache key for tracking previously used One-Time-Passwords if
+   * ___vsa_cache_key___ - the RADIUS vendor specific attribute which is used
+     as the cache key for tracking previously used One-Time-Passwords if
      ___allow_reuse___ is disabled.  The default is "_User-Name_".
 
-   * ___vsa_time_offset___ - the RADIUS vendor specific attribute to use to
-     override the configured ___time_offset___ if ___allow_override___ is
+   * ___vsa_time_offset___ - the RADIUS vendor specific attribute which
+     overrides the configured ___time_offset___ if ___allow_override___ is
      enabled.  The specified VSA must have a type of integer or unsigned.  The
      default is "_TOTP-Time-Offset_".
 
-   * ___vsa_unix_time___ - the RADIUS vendor specific attribute to use to
-     override the configured ___unix_time___ if ___allow_override___ is
+   * ___vsa_unix_time___ - the RADIUS vendor specific attribute which
+     overrides the configured ___unix_time___ if ___allow_override___ is
      enabled.  The specified VSA must have a type of integer or unsigned.
      If this option is not configured, then ___unix_time___ cannot be
      overridden by a request.
 
-   * ___vsa_time_step___ - the RADIUS vendor specific attribute to use to
-     override the configured ___time_step___ if ___allow_override___ is
+   * ___vsa_time_step___ - the RADIUS vendor specific attribute which
+     overrides the configured ___time_step___ if ___allow_override___ is
      enabled.  The specified VSA must have a type of integer or unsigned.
      If this option is not configured, then ___time_step___ cannot be
      overridden by a request.
 
-   * ___vsa_otp_length___ - the RADIUS vendor specific attribute to use to
-     override the configured ___otp_length___ if ___allow_override___ is
+   * ___vsa_otp_length___ - the RADIUS vendor specific attribute which
+     overrides the configured ___otp_length___ if ___allow_override___ is
      enabled.  The specified VSA must have a type of integer or unsigned.
      If this option is not configured, then ___otp_length___ cannot be
      overridden by a request.
 
-   * ___vsa_algorithm___ - the RADIUS vendor specific attribute to use to
+   * ___vsa_algorithm___ - the RADIUS vendor specific attribute which
      override the configured ___algorithm___ if ___allow_override___ is
      enabled.  The specified VSA must have a type of string. If this option is
      not configured, then ___algorithm___ cannot be overridden by a request.
