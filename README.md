@@ -68,6 +68,34 @@ Module Configuration
      cache key for tracking previously used One-Time-Passwords if
      ___allow_reuse___ is disabled.  The default is "_User-Name_".
 
+   * ___vsa_time_offset___ - the RADIUS vendor specific attribute to use to
+     override the configured ___time_offset___ if ___allow_override___ is
+     enabled.  The specified VSA must have a type of integer or unsigned.  The
+     default is "_TOTP-Time-Offset_".
+
+   * ___vsa_unix_time___ - the RADIUS vendor specific attribute to use to
+     override the configured ___unix_time___ if ___allow_override___ is
+     enabled.  The specified VSA must have a type of integer or unsigned.
+     If this option is not configured, then ___unix_time___ cannot be
+     overridden by a request.
+
+   * ___vsa_time_step___ - the RADIUS vendor specific attribute to use to
+     override the configured ___time_step___ if ___allow_override___ is
+     enabled.  The specified VSA must have a type of integer or unsigned.
+     If this option is not configured, then ___time_step___ cannot be
+     overridden by a request.
+
+   * ___vsa_otp_length___ - the RADIUS vendor specific attribute to use to
+     override the configured ___otp_length___ if ___allow_override___ is
+     enabled.  The specified VSA must have a type of integer or unsigned.
+     If this option is not configured, then ___otp_length___ cannot be
+     overridden by a request.
+
+   * ___vsa_algorithm___ - the RADIUS vendor specific attribute to use to
+     override the configured ___algorithm___ if ___allow_override___ is
+     enabled.  The specified VSA must have a type of string. If this option is
+     not configured, then ___algorithm___ cannot be overridden by a request.
+
 The following is a example configuration which uses the default values:
 
       totp_code {
@@ -80,6 +108,7 @@ The following is a example configuration which uses the default values:
          allow_override    = false
          devel_debug       = false
          vsa_cache_key     = "User-Name"
+         vsa_time_offset   = "TOTP-Time-Offset"
       }
 
 
