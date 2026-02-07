@@ -56,11 +56,6 @@ Module Configuration
      times.  If this option is disabled, then an One-Time-Password may only be
      used once by a user.  The default is "_no_".
 
-   * ___user_attribute___ - the RADIUS attribute which contains the user
-     name or client identifier of the session.  The value of this attribute
-     is used to track previously used One-Time-Passwords if ___allow_reuse___
-     is disabled.  The default is "_User-Name_".
-
    * ___devel_debug___ - enables additional debug statements for developers.
      The default is "_no_".
 
@@ -68,6 +63,10 @@ Module Configuration
      attributes.  This options allow users to have different TOTP paramters
      which are retrieved from a data store during authentication. The default
      is "_no_".
+
+   * ___vsa_cache_key___ - the RADIUS vendor specific attribute to use as the
+     cache key for tracking previously used One-Time-Passwords if
+     ___allow_reuse___ is disabled.  The default is "_User-Name_".
 
 The following is a example configuration which uses the default values:
 
@@ -80,7 +79,7 @@ The following is a example configuration which uses the default values:
          allow_reuse       = false
          allow_override    = false
          devel_debug       = false
-         user_attribute    = "User-Name"
+         vsa_cache_key     = "User-Name"
       }
 
 

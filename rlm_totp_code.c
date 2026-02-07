@@ -127,8 +127,8 @@ typedef struct _totp_params      totp_params_t;
 struct rlm_totp_code_t
 {  char const *      name;                   //!< name of this instance */
    const char *      totp_algo_str;          //!< name of HMAC cryptographic algorithm
-   const char *      user_attrnam;           //!< name of User-Name attribute to use as unique identifier
-   const DICT_ATTR * user_attr;              //!< dictionary entry for user attribute
+   const char *      vsa_cache_key_name;     //!< name of VSA to use as the cache key
+   const DICT_ATTR * vsa_cache_key;          //!< dictionary entry for VSA to use as the cache key
    uint32_t          totp_t0;                //!< Unix time to start counting time steps (default: 0)
    uint32_t          totp_x;                 //!< time step in seconds (default: 30 seconds)
    int32_t           totp_time_offset;       //!< adjust current time by seconds
@@ -296,7 +296,7 @@ static const CONF_PARSER module_config[] =
    {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),      "no" },
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),         "no" },
    {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),       "HmacSHA1" },
-   {  "user_attribute",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, user_attrnam),        "User-Name" },
+   {  "vsa_cache_key",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_cache_key_name),  "User-Name" },
    CONF_PARSER_TERMINATOR
 };
 
@@ -446,8 +446,8 @@ mod_instantiate(
       inst->totp_algo = RLM_TOTP_HMAC_SHA1;
    };
 
-   if ((inst->user_attr = dict_attrbyname(inst->user_attrnam)) == NULL)
-   {  ERROR("totp_code (%s): '%s' attribute not found in dictionary", inst->name, inst->user_attrnam);
+   if ((inst->vsa_cache_key = dict_attrbyname(inst->vsa_cache_key_name)) == NULL)
+   {  ERROR("totp_code (%s): '%s' attribute not found in dictionary", inst->name, inst->vsa_cache_key_name);
       return(-1);
    };
 
