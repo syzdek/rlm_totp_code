@@ -128,6 +128,7 @@ struct rlm_totp_code_t
    uint32_t          totp_x;                 //!< time step in seconds (default: 30 seconds)
    int32_t           totp_time_adjust;       //!< adjust current time by seconds
    uint32_t          digits_len;             //!< length of output TOTP code
+   bool              allow_override;         //!< allow TOTP parameters to be overriden by RADIUS attributes
    bool              allow_reuse;            //!< allow TOTP codes to be re-used
    bool              devel_debug;            //!< enable extra debug messages for developer
    int               totp_algo;              //!< HMAC cryptographic algorithm
@@ -255,11 +256,12 @@ totp_xlat_code(
 
 // Map configuration file names to internal variables */
 static const CONF_PARSER module_config[] =
-{  {  "time_start",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),          "0" },
+{  {  "unix_time",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),          "0" },
    {  "time_step",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_x),           "30" },
    {  "time_adjustment",   FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_adjust), "0" },
-   {  "code_length",       FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, digits_len),       "6" },
+   {  "digits",            FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, digits_len),       "6" },
    {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),      "no" },
+   {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),   "no" },
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),      "no" },
    {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),    "HmacSHA1" },
    {  "user_attribute",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, user_attrnam),     "User-Name" },
