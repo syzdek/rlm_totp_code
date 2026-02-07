@@ -295,7 +295,7 @@ static const CONF_PARSER module_config[] =
    {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),            "no" },
    {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),         "no" },
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),            "no" },
-   {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),          "HmacSHA1" },
+   {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),          "sha1" },
    {  "vsa_cache_key",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_cache_key_name),     "User-Name" },
    CONF_PARSER_TERMINATOR
 };
