@@ -261,6 +261,14 @@ totp_hmac(
 
 
 static VALUE_PAIR *
+totp_request_vp_by_dict(
+         UNUSED void *                 instance,
+         REQUEST *                     request,
+         const DICT_ATTR *             da,
+         int                           scope );
+
+
+static VALUE_PAIR *
 totp_request_vp_by_name(
          UNUSED void *                 instance,
          REQUEST *                     request,
@@ -851,6 +859,32 @@ totp_hmac(
 
 
 VALUE_PAIR *
+totp_request_vp_by_dict(
+         UNUSED void *                 instance,
+         REQUEST *                     request,
+         const DICT_ATTR *             da,
+         int                           scope )
+{
+   VALUE_PAIR *            vps;
+
+   rad_assert(instance        != NULL);
+   rad_assert(request         != NULL);
+
+   if (da == NULL)
+      return(NULL);
+
+   switch(scope)
+   {  case TOTP_SCOPE_CONTROL:   vps = request->config;      break;
+      case TOTP_SCOPE_REPLY:     vps = request->reply->vps;  break;
+      case TOTP_SCOPE_REQUEST:   vps = request->packet->vps; break;
+      default:                   vps = request->config;      break;
+   };
+
+   return(fr_pair_find_by_num(vps, da->attr, da->vendor, TAG_ANY));
+}
+
+
+VALUE_PAIR *
 totp_request_vp_by_name(
          UNUSED void *                 instance,
          REQUEST *                     request,
@@ -862,7 +896,6 @@ totp_request_vp_by_name(
    char *                  attr_scope;
    char *                  attr_name;
    const DICT_ATTR *       da;
-   VALUE_PAIR *            vps;
 
    rad_assert(instance        != NULL);
    rad_assert(request         != NULL);
@@ -890,21 +923,15 @@ totp_request_vp_by_name(
    if (da == NULL)
       return(NULL);
 
-   // retrieve attribute from request
-   if (attr_scope == NULL)
-   {  switch(default_scope)
-      {  case TOTP_SCOPE_CONTROL:   vps = request->config;      break;
-         case TOTP_SCOPE_REPLY:     vps = request->reply->vps;  break;
-         case TOTP_SCOPE_REQUEST:   vps = request->packet->vps; break;
-         default:                   vps = request->config;      break;
-      };
-   }
-   else if (!(strcasecmp(attr_scope, "control")))  vps = request->config;
-   else if (!(strcasecmp(attr_scope, "reply")))    vps = request->reply->vps;
-   else if (!(strcasecmp(attr_scope, "request")))  vps = request->packet->vps;
-   else return(NULL);
+   // set attribute scope
+   if (attr_scope != NULL)
+   {  if (!(strcasecmp(attr_scope, "control")))       default_scope = TOTP_SCOPE_CONTROL;
+      else if (!(strcasecmp(attr_scope, "reply")))    default_scope = TOTP_SCOPE_REPLY;
+      else if (!(strcasecmp(attr_scope, "request")))  default_scope = TOTP_SCOPE_REQUEST;
+      else return(NULL);
+   };
 
-   return(fr_pair_find_by_num(vps, da->attr, da->vendor, TAG_ANY));
+   return(totp_request_vp_by_dict(instance, request, da, default_scope));
 }
 
 
