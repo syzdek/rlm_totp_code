@@ -30,6 +30,33 @@ Currently the following HMAC algorithms are supported:
 rlm_totp_code has been tested with FreeRADIUS server 3.2.x.
 
 
+Description of TOTP
+-------------------
+
+The Time-Based One-Time Password (TOTP) algorithm, defined in RFC 6238, is a
+method for generating one time use paswords derived from the current time, a
+shared secret, and shared parameters. TOTP is based upon the the HMAC-based
+One-Time Password (HOTP) algorithm defined in RFC 4226.
+
+The TOTP algorithm can be represented as:
+
+    T         = (CurrentUnixTime - T0) / X 
+    TOTP      = Truncate(HMAC_Algorithm(K, T)) % 10^Digit
+
+Where
+
+   * ___CurrentUnixTime___ is the current number of seconds since January 1, 1970
+   * ___T0___ is number of seconds after January 1, 1970 to start counting step
+   * ___X___ is the number of seconds in each step
+   * ___T___ is the number of steps since ___T0___
+   * ___K___ is the shared secret
+   * ___HMAC_Algorithm()___ is a HMAC algorithm function such as HMAC-SHA-1
+   * ___Truncate()___ is a function which dynamically truncates the hash
+     returned by ___HMAC_Algorithm()___ to a 31 bit unsigned integer. This
+     function is defined in RFC 4226 Section 4.2.
+   * ___Digits___ is the length of the derived password
+
+
 Module Configuration
 --------------------
 
