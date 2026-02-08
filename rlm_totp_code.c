@@ -176,9 +176,11 @@ struct _totp_params
    uint64_t          totp_cur_unix;    //!< current Unix time
    uint64_t          totp_t;           //!< number of time steps since t0
    int64_t           totp_time_offset; //!< amount of seconds to adjust .totp_cur_unix
-   size_t            otp_length;       //!< requested length of One-Time-Password
+   uint64_t          totp_algo;        //!< HMAC algorithm
+   uint64_t          otp_length;       //!< requested length of One-Time-Password
    size_t            key_len;          //!< length of HMAC key
    const uint8_t *   key;              //!< HAMC key
+   char              otp[16];
 };
 
 
@@ -239,14 +241,7 @@ totp_base32_verify(
 
 static int
 totp_calculate(
-         int                           totp_algo,
-         uint64_t                      totp_t0,
-         uint64_t                      totp_x,
-         uint64_t                      totp_time,
-         const uint8_t *               key,
-         size_t                        key_len,
-         unsigned                      digits,
-         uint64_t *                    totp_tp );
+         totp_params_t *               params );
 
 
 static void
@@ -275,6 +270,29 @@ totp_request_vp_by_name(
          const char *                  attrstr,
          size_t                        attrstr_len,
          int                           default_scope );
+
+
+static int
+totp_set_params(
+         void *                        instance,
+         REQUEST *                     request,
+         totp_params_t *               params );
+
+
+int
+totp_set_params_integer(
+         void *                        instance,
+         REQUEST *                     request,
+         const DICT_ATTR *             da,
+         uint64_t *                    uintp );
+
+
+int
+totp_set_params_signed(
+         void *                        instance,
+         REQUEST *                     request,
+         const DICT_ATTR *             da,
+         int64_t *                     intp );
 
 
 static int
@@ -753,38 +771,39 @@ totp_base32_verify(
 
 int
 totp_calculate(
-         int                           totp_algo,
-         uint64_t                      totp_t0,
-         uint64_t                      totp_x,
-         uint64_t                      totp_time,
-         const uint8_t *               key,
-         size_t                        key_len,
-         unsigned                      digits,
-         uint64_t *                    totp_tp )
+         totp_params_t *               params )
 {
    uint8_t        data[8];
    uint8_t        digest[RLM_TOTP_DIGEST_LENGTH];
    uint32_t       bin_code;
-   uint64_t       totp_t;
    uint64_t       offset;
    unsigned       digest_len;
    unsigned       denominator;
+   unsigned       digits;
+   unsigned       otp;
 
-   rad_assert(totp_t0 <= totp_time);
+   rad_assert(params != NULL);
 
-   // calculate interval count and copy into data buffer
-   totp_t   = (totp_time-totp_t0) / totp_x;
-   data[0]  = (totp_t >> 56) & 0xff;
-   data[1]  = (totp_t >> 48) & 0xff;
-   data[2]  = (totp_t >> 40) & 0xff;
-   data[3]  = (totp_t >> 32) & 0xff;
-   data[4]  = (totp_t >> 24) & 0xff;
-   data[5]  = (totp_t >> 16) & 0xff;
-   data[6]  = (totp_t >>  8) & 0xff;
-   data[7]  =  totp_t        & 0xff;
+   if (params->totp_t0 > (params->totp_cur_unix + params->totp_time_offset))
+      return(-1);
+
+   // calculate interval count
+   params->totp_t     = params->totp_cur_unix - params->totp_t0;
+   params->totp_t    += params->totp_time_offset;
+   params->totp_t    /= params->totp_x;
+
+   // copy interval count into data buffer
+   data[0]  = (params->totp_t >> 56) & 0xff;
+   data[1]  = (params->totp_t >> 48) & 0xff;
+   data[2]  = (params->totp_t >> 40) & 0xff;
+   data[3]  = (params->totp_t >> 32) & 0xff;
+   data[4]  = (params->totp_t >> 24) & 0xff;
+   data[5]  = (params->totp_t >> 16) & 0xff;
+   data[6]  = (params->totp_t >>  8) & 0xff;
+   data[7]  =  params->totp_t        & 0xff;
 
    // calculate HMAC digest
-   totp_hmac(totp_algo, digest, &digest_len, data, sizeof(data), key, key_len);
+   totp_hmac((int)params->totp_algo, digest, &digest_len, data, sizeof(data), params->key, params->key_len);
    if (digest_len == 0)
       return(-1);
 
@@ -796,13 +815,14 @@ totp_calculate(
                 (digest[offset+3] & 0xff);
 
    // truncates code to specific decimal digits
-   for(denominator = 1; (digits > 0); digits--)
+   for(denominator = 1, digits = (unsigned)params->otp_length; (digits > 0); digits--)
       denominator *= 10;
 
-   if ((totp_tp))
-      *totp_tp = totp_t;
+   otp = bin_code % denominator;
 
-   return((int)(bin_code % denominator));
+   snprintf(params->otp, sizeof(params->otp), "%0*u", (int)params->otp_length, otp);
+
+   return(otp);
 }
 
 
@@ -936,6 +956,161 @@ totp_request_vp_by_name(
 
 
 int
+totp_set_params(
+         void *                        instance,
+         REQUEST *                     request,
+         totp_params_t *               params )
+{
+   VALUE_PAIR *         vp;
+   rlm_totp_code_t *    inst;
+   uint64_t             totp_algo;
+
+   rad_assert(instance  != NULL);
+   rad_assert(request   != NULL);
+   rad_assert(params    != NULL);
+
+   inst = instance;
+
+   // set initial values from module instance
+   memset(params, 0, sizeof(totp_params_t));
+   params->totp_t0            = inst->totp_t0;
+   params->totp_x             = inst->totp_x;
+   params->totp_cur_unix      = time(NULL);
+   params->totp_time_offset   = inst->totp_time_offset;
+   params->totp_algo          = inst->totp_algo;
+   params->otp_length         = inst->otp_length;
+
+   if (inst->allow_override == 0)
+      return(0);
+
+   totp_set_params_signed(instance, request, inst->vsa_time_offset, &params->totp_time_offset);
+   totp_set_params_integer(instance, request, inst->vsa_unix_time,  &params->totp_t0);
+   totp_set_params_integer(instance, request, inst->vsa_time_step,  &params->totp_x);
+   totp_set_params_integer(instance, request, inst->vsa_otp_length, &params->otp_length);
+
+   if (inst->vsa_algorithm != NULL)
+   {  vp = totp_request_vp_by_dict(instance, request, inst->vsa_algorithm, TOTP_SCOPE_CONTROL);
+      if ( (vp != NULL) && (vp->da->type == PW_TYPE_STRING) )
+      {  totp_algo = totp_algorithm_id(vp->data.strvalue);
+         if (totp_algo != 0)
+            params->totp_algo = totp_algo;
+      };
+   };
+
+   return(0);
+}
+
+
+int
+totp_set_params_integer(
+         void *                        instance,
+         REQUEST *                     request,
+         const DICT_ATTR *             da,
+         uint64_t *                    uintp )
+{
+   VALUE_PAIR *         vp;
+   unsigned long long   ulongval;
+   char *               endptr;
+
+   rad_assert(instance  != NULL);
+   rad_assert(request   != NULL);
+   rad_assert(uintp     != NULL);
+
+   if (da == NULL)
+      return(0);
+
+   vp = totp_request_vp_by_dict(instance, request, da, TOTP_SCOPE_CONTROL);
+   if (vp == NULL)
+      return(0);
+
+   switch(vp->da->type)
+   {  case PW_TYPE_INTEGER:
+         *uintp = (uint64_t)vp->data.integer;
+         break;
+
+      case PW_TYPE_INTEGER64:
+         *uintp = (uint64_t)vp->data.integer64;
+         break;
+
+      case PW_TYPE_SHORT:
+         *uintp = (uint64_t)vp->data.ushort;
+         break;
+
+      case PW_TYPE_SIGNED:
+         *uintp = (uint64_t)vp->data.sinteger;
+         break;
+
+      case PW_TYPE_STRING:
+         ulongval = strtoull(vp->data.strvalue, &endptr, 10);
+         if ( (vp->data.strvalue == endptr) || (endptr[0] != '\0') )
+            return(-1);
+         *uintp = (uint64_t)ulongval;
+         break;
+
+      default:
+         return(-1);
+   };
+
+   return(0);
+}
+
+
+int
+totp_set_params_signed(
+         void *                        instance,
+         REQUEST *                     request,
+         const DICT_ATTR *             da,
+         int64_t *                     intp )
+{
+   VALUE_PAIR *         vp;
+   unsigned long long   longval;
+   char *               endptr;
+
+   rad_assert(instance  != NULL);
+   rad_assert(request   != NULL);
+   rad_assert(intp      != NULL);
+
+   if (da == NULL)
+      return(0);
+
+   vp = totp_request_vp_by_dict(instance, request, da, TOTP_SCOPE_CONTROL);
+   if (vp == NULL)
+      return(0);
+
+   switch(vp->da->type)
+   {  case PW_TYPE_INTEGER:
+         *intp = (int64_t)vp->data.integer;
+         break;
+
+      case PW_TYPE_INTEGER64:
+         *intp = (int64_t)vp->data.integer64;
+         break;
+
+      case PW_TYPE_SHORT:
+         *intp = (int64_t)vp->data.ushort;
+         break;
+
+      case PW_TYPE_SIGNED:
+         *intp = (int64_t)vp->data.sinteger;
+         break;
+
+      case PW_TYPE_STRING:
+         longval = strtoll(vp->data.strvalue, &endptr, 10);
+         if ( (vp->data.strvalue == endptr) || (endptr[0] != '\0') )
+            return(-1);
+         *intp = (int64_t)longval;
+         break;
+
+      default:
+         return(-1);
+   };
+
+   return(0);
+}
+
+
+
+int
 totp_used_cmp(
          const void *                  ptr_a,
          const void *                  ptr_b )
@@ -970,16 +1145,17 @@ totp_xlat_code(
          char *                        out,
          size_t                        outlen )
 {
+   int                     rc;
    int                     code;
    size_t                  pos;
    ssize_t                 base32_len;
    ssize_t                 key_len;
    uint8_t *               key;
-   time_t                  totp_time;
    const char *            base32;
    char                    attr_str[MAX_STRING_LEN];
    VALUE_PAIR *            vp;
 	rlm_totp_code_t *       inst;
+   totp_params_t           params;
 
    rad_assert(instance != NULL);
    rad_assert(request  != NULL);
@@ -990,9 +1166,11 @@ totp_xlat_code(
    key      = NULL;
    key_len  = 0;
 
-   // retreieve current time
-   totp_time  = time(NULL);
-   totp_time += inst->totp_time_offset;
+   // determine TOTP parameters
+   if ((rc = totp_set_params(instance, request, &params)) != 0)
+   {  *out = '\0';
+      return(-1);
+   };
 
    // skip leading white space
    while (isspace((uint8_t) *fmt))
@@ -1080,23 +1258,29 @@ totp_xlat_code(
       key[key_len] = '\0';
    };
 
-   code = totp_calculate(inst->totp_algo, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->otp_length, NULL);
+   params.key     = key;
+   params.key_len = key_len;
+
+//   code = totp_calculate(inst->totp_algo, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->otp_length, NULL);
+   code = totp_calculate(&params);
    if ((inst->devel_debug))
-   {  RDEBUG("rlm_totp_code: totp_algo:      %s\n",  totp_algorithm_name(inst->totp_algo));
-      RDEBUG("rlm_totp_code: totp_time:      %u\n",  (unsigned)totp_time);
-      RDEBUG("rlm_totp_code: inst->totp_t0:  %u\n",  (unsigned)inst->totp_t0);
-      RDEBUG("rlm_totp_code: inst->totp_x:   %u\n",  (unsigned)inst->totp_x);
-      RDEBUG("rlm_totp_code: key:            <binary>\n");
-      RDEBUG("rlm_totp_code: key_len:        %u\n",  (unsigned)key_len);
-      RDEBUG("rlm_totp_code: result:         %0*i\n",  inst->otp_length, code);
-      RDEBUG("rlm_totp_code: result_len:     %i\n",  inst->otp_length);
+   {  RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algorithm_name((int)params.totp_algo));
+      RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params.totp_cur_unix);
+      RDEBUG("rlm_totp_code: totp_time_offset:  %i\n",  (int)params.totp_time_offset);
+      RDEBUG("rlm_totp_code: inst->totp_t0:     %u\n",  (unsigned)params.totp_t0);
+      RDEBUG("rlm_totp_code: inst->totp_x:      %u\n",  (unsigned)params.totp_x);
+      RDEBUG("rlm_totp_code: inst->totp_t:      %u\n",  (unsigned)params.totp_t);
+      RDEBUG("rlm_totp_code: key:               <binary>\n");
+      RDEBUG("rlm_totp_code: key_len:           %u\n",  (unsigned)params.key_len);
+      RDEBUG("rlm_totp_code: result:            %s\n",  params.otp);
+      RDEBUG("rlm_totp_code: result_len:        %u\n",  (unsigned)params.otp_length);
    };
    if (code < 0)
    {  *out = '\0';
       return(-1);
    };
 
-   if ((size_t)snprintf(out, outlen, "%0*i" , (int)inst->otp_length, (int)code) >= outlen)
+   if ((size_t)snprintf(out, outlen, "%s" , params.otp) >= outlen)
    {  REDEBUG("Insufficient space to write TOTP code");
       *out = '\0';
       return(-1);
