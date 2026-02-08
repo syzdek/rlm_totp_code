@@ -5,5 +5,7 @@ All rights reserved.
 
 * add xlat expansion for confirming use of code
 * add post-auth hook for confirming use of code
-* add ability to override TOTP configuration using VSA
+* reserve VSA to use as defaults for override options
 * duplicate functionality of rlm_totp 
+* update coding style to align more closely with FreeRADIUS
+* write example config files
