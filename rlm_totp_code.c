@@ -980,7 +980,7 @@ totp_set_params(
    params->totp_algo          = inst->totp_algo;
    params->otp_length         = inst->otp_length;
 
-   if (inst->allow_override == 0)
+   if (inst->allow_override == false)
       return(0);
 
    totp_set_params_signed(instance, request, inst->vsa_time_offset, &params->totp_time_offset);
