@@ -128,7 +128,17 @@ struct rlm_totp_code_t
 {  char const *      name;                   //!< name of this instance */
    const char *      totp_algo_str;          //!< name of HMAC cryptographic algorithm
    const char *      vsa_cache_key_name;     //!< name of VSA to use as the cache key
+   const char *      vsa_time_offset_name;   //!< name of VSA which overrides totp_time_offset
+   const char *      vsa_unix_time_name;     //!< name of VSA which overrides totp_t0
+   const char *      vsa_time_step_name;     //!< name of VSA which overrides totp_x
+   const char *      vsa_otp_length_name;    //!< name of VSA which overrides otp_length
+   const char *      vsa_algorithm_name;     //!< name of VSA which overrides totp_algo
    const DICT_ATTR * vsa_cache_key;          //!< dictionary entry for VSA to use as the cache key
+   const DICT_ATTR * vsa_time_offset;        //!< dictionary entry for VSA which overrides totp_time_offset
+   const DICT_ATTR * vsa_unix_time;          //!< dictionary entry for VSA which overrides totp_t0
+   const DICT_ATTR * vsa_time_step;          //!< dictionary entry for VSA which overrides totp_x
+   const DICT_ATTR * vsa_otp_length;         //!< dictionary entry for VSA which overrides otp_length
+   const DICT_ATTR * vsa_algorithm;          //!< dictionary entry for VSA which overrides totp_algo
    uint32_t          totp_t0;                //!< Unix time to start counting time steps (default: 0)
    uint32_t          totp_x;                 //!< time step in seconds (default: 30 seconds)
    int32_t           totp_time_offset;       //!< adjust current time by seconds
@@ -297,6 +307,11 @@ static const CONF_PARSER module_config[] =
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),            "no" },
    {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),          "sha1" },
    {  "vsa_cache_key",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_cache_key_name),     "User-Name" },
+   {  "vsa_time_offset",   FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_time_offset_name),   "TOTP-Time-Offset" },
+   {  "vsa_unix_time",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_unix_time_name),     NULL },
+   {  "vsa_time_step",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_time_step_name),     NULL },
+   {  "vsa_otp_length",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_otp_length_name),    NULL },
+   {  "vsa_algorithm",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_algorithm_name),     NULL },
    CONF_PARSER_TERMINATOR
 };
 
@@ -420,6 +435,8 @@ mod_instantiate(
          void *                        instance )
 {
    rlm_totp_code_t *       inst;
+   PW_TYPE                 type;
+   const char *            vsa_name;
 
    rad_assert(instance != NULL);
 
@@ -446,9 +463,90 @@ mod_instantiate(
       inst->totp_algo = RLM_TOTP_HMAC_SHA1;
    };
 
-   if ((inst->vsa_cache_key = dict_attrbyname(inst->vsa_cache_key_name)) == NULL)
-   {  ERROR("totp_code (%s): '%s' attribute not found in dictionary", inst->name, inst->vsa_cache_key_name);
-      return(-1);
+   // lookup and verify VSA specified by config option vsa_cache_key
+   if ((vsa_name = inst->vsa_cache_key_name) != NULL)
+   {  if ((inst->vsa_cache_key = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_time_offset
+   if ((vsa_name = inst->vsa_time_offset_name) != NULL)
+   {  if ((inst->vsa_time_offset = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+      type = inst->vsa_time_offset->type;
+      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_unix_time
+   if ((vsa_name = inst->vsa_unix_time_name) != NULL)
+   {  if ((inst->vsa_unix_time = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+      type = inst->vsa_unix_time->type;
+      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_time_step
+   if ((vsa_name = inst->vsa_time_step_name) != NULL)
+   {  if ((inst->vsa_time_step = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+      type = inst->vsa_time_step->type;
+      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_otp_length
+   if ((vsa_name = inst->vsa_otp_length_name) != NULL)
+   {  if ((inst->vsa_otp_length = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+      type = inst->vsa_otp_length->type;
+      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_algorithm
+   if ((vsa_name = inst->vsa_algorithm_name) != NULL)
+   {  if ((inst->vsa_algorithm = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+      type = inst->vsa_algorithm->type;
+      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_algorithm
+   if ((vsa_name = inst->vsa_algorithm_name) != NULL)
+   {  if ((inst->vsa_algorithm = dict_attrbyname(inst->vsa_otp_length_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+      type = inst->vsa_algorithm->type;
+      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
+         return(-1);
+      };
    };
 
    // initialize cache and list
