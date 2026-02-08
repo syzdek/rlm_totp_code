@@ -55,6 +55,7 @@ Where
      returned by ___HMAC_Algorithm()___ to a 31 bit unsigned integer. This
      function is defined in RFC 4226 Section 4.2.
    * ___Digits___ is the length of the derived password
+   * ___TOTP___ is the derived password
 
 
 Module Configuration
