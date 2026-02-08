@@ -504,7 +504,7 @@ mod_instantiate(
          return(-1);
       };
       type = inst->vsa_time_offset->type;
-      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      if ( (type!= PW_TYPE_INTEGER) && (type!= PW_TYPE_INTEGER64) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
       {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
          return(-1);
       };
@@ -517,7 +517,7 @@ mod_instantiate(
          return(-1);
       };
       type = inst->vsa_unix_time->type;
-      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      if ( (type!= PW_TYPE_INTEGER) && (type!= PW_TYPE_INTEGER64) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
       {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
          return(-1);
       };
@@ -530,7 +530,7 @@ mod_instantiate(
          return(-1);
       };
       type = inst->vsa_time_step->type;
-      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      if ( (type!= PW_TYPE_INTEGER) && (type!= PW_TYPE_INTEGER64) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
       {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
          return(-1);
       };
@@ -543,7 +543,7 @@ mod_instantiate(
          return(-1);
       };
       type = inst->vsa_otp_length->type;
-      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      if ( (type!= PW_TYPE_INTEGER) && (type!= PW_TYPE_INTEGER64) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
       {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
          return(-1);
       };
@@ -556,20 +556,7 @@ mod_instantiate(
          return(-1);
       };
       type = inst->vsa_algorithm->type;
-      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
-      {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
-         return(-1);
-      };
-   };
-
-   // lookup and verify VSA specified by config option vsa_algorithm
-   if ((vsa_name = inst->vsa_algorithm_name) != NULL)
-   {  if ((inst->vsa_algorithm = dict_attrbyname(inst->vsa_otp_length_name)) == NULL)
-      {  ERROR("'%s' not found in dictionary", vsa_name);
-         return(-1);
-      };
-      type = inst->vsa_algorithm->type;
-      if ( (type!= PW_TYPE_INTEGER) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
+      if ( (type!= PW_TYPE_INTEGER) && (type!= PW_TYPE_INTEGER64) && (type != PW_TYPE_SIGNED) && (type != PW_TYPE_STRING) )
       {  ERROR("'%s' is not an integer or signed attribute", vsa_name);
          return(-1);
       };
