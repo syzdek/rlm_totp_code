@@ -1168,6 +1168,12 @@ totp_used_free(
       return;
    entry = ptr;
 
+   // removes from linked list
+   if (entry->prev != NULL)
+      entry->prev->next = entry->next;
+   if (entry->next != NULL)
+      entry->next->prev = entry->prev;
+
    if ((entry->key))
       free(entry->key);
    free(entry);
