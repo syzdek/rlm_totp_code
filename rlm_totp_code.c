@@ -164,7 +164,7 @@ struct _totp_algorithm
 struct _totp_cache_entry
 {  uint8_t *               key;              //!< value of User-Name attribute
    size_t                  keylen;           //!< length of User-Name attribute
-   time_t                  entry_expires;    //!< epoch time when last used code will expire
+   time_t                  invalid_until;    //!< epoch time when last used code will expire
    totp_cache_entry_t *    prev;
    totp_cache_entry_t *    next;
 };
@@ -833,7 +833,7 @@ totp_cache_cleanup(
    inst  = instance;
    root  = inst->cache_list;
 
-   while( (root->next != NULL) && (root->entry_expires < t) )
+   while( (root->next != NULL) && (root->invalid_until < t) )
       rbtree_deletebydata(inst->cache_tree, root->next);
 
    return;
@@ -864,7 +864,7 @@ totp_cache_entry_alloc(
 
    entry->key[key_len]  = '\0';
    entry->keylen        = key_len;
-   entry->entry_expires = expires;
+   entry->invalid_until = expires;
 
    return(entry);
 }
@@ -987,7 +987,7 @@ totp_cache_query(
    pthread_mutex_lock(inst->mutex);
    result = rbtree_finddata(inst->cache_tree, &cache_key);
    if (result != NULL)
-      *invalid_untilp = result->entry_expires;
+      *invalid_untilp = result->invalid_until;
    pthread_mutex_unlock(inst->mutex);
 
    return( (*invalid_untilp == -1) ? -1 : 0 );
@@ -1033,13 +1033,13 @@ totp_cache_update(
       pthread_mutex_unlock(inst->mutex);
       return(-1);
    };
-   entry->entry_expires = expires + params->totp_x - 1;
+   entry->invalid_until = expires + params->totp_x - 1;
 
    // update existing entry or add new entry
    result = rbtree_finddata(inst->cache_tree, entry);
    if (result != NULL)
    {  totp_cache_entry_unlink(result);
-      result->entry_expires = entry->entry_expires;
+      result->invalid_until = entry->invalid_until;
       talloc_free(entry);
       entry = result;
    } else
