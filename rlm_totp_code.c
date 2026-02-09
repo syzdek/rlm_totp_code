@@ -501,6 +501,7 @@ mod_instantiate(
    inst              = instance;
    inst->mutex       = NULL;
    inst->cache_tree  = NULL;
+   inst->cache_list  = NULL;
 
    // initialize mutex lock
    inst->mutex = NULL;
@@ -595,8 +596,6 @@ mod_instantiate(
    };
 
    // initialize cache and list
-   inst->cache_tree = NULL;
-   inst->cache_list = NULL;
    if (!(inst->allow_reuse))
    {  inst->cache_tree = rbtree_create(instance, totp_cache_entry_cmp, totp_cache_entry_free, 0);
       if (inst->cache_tree == NULL)
