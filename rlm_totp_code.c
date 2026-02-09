@@ -1002,11 +1002,13 @@ totp_cache_update(
          REQUEST *                     request,
          totp_params_t *               params )
 {
+   uint8_t                 cache_key_buff[MAX_STRING_LEN];
    rlm_totp_code_t *       inst;
-   totp_cache_entry_t *    entry;
+   totp_cache_entry_t      cache_key;
    totp_cache_entry_t *    result;
    VALUE_PAIR *            vp;
-   uint64_t                expires;
+   uint64_t                time_cleanup;
+   uint64_t                invalid_until;
 
    rad_assert(instance != NULL);
    rad_assert(request  != NULL);
@@ -1014,47 +1016,54 @@ totp_cache_update(
 
    inst = instance;
 
-   expires  = params->totp_cur_unix - params->totp_t0 + params->totp_time_offset;
-   expires /= params->totp_x;
-   expires--;
-   expires *= params->totp_x;
+   // retrieve and check value-pair used as cache key
+   if ((vp = totp_cache_entry_key(instance, request)) == NULL)
+      return(-1);
+   if (vp->length >= sizeof(cache_key_buff))
+      return(-1);
+
+   // configure cache key
+   memset(&cache_key, 0,      sizeof(cache_key));
+   memset(cache_key_buff, 0,  sizeof(cache_key_buff));
+   cache_key.key = cache_key_buff;
+   memcpy(cache_key_buff, vp->data.octets, vp->length);
+   cache_key.keylen = vp->length;
 
    pthread_mutex_lock(inst->mutex);
 
-   totp_cache_cleanup(instance, (time_t)expires);
+   // clean up stale entries from cache
+   time_cleanup  = params->totp_cur_unix + params->totp_time_offset;
+   totp_cache_cleanup(instance, (time_t)time_cleanup);
 
-   vp = totp_cache_entry_key(instance, request);
-   if (vp == NULL)
-   {  pthread_mutex_unlock(inst->mutex);
-      return(-1);
-   };
+   // calculates when cached entry should expire
+   invalid_until  = params->totp_cur_unix - params->totp_t0 + params->totp_time_offset;
+   invalid_until += params->totp_x - (invalid_until % params->totp_x);
 
-   entry = totp_cache_entry_alloc(instance, vp->data.octets, vp->length, 0);
-   if (entry == NULL)
-   {  REDEBUG2("unable to allocate memory for totp_cache_entry_t");
-      pthread_mutex_unlock(inst->mutex);
-      return(-1);
-   };
-   entry->invalid_until = expires + params->totp_x - 1;
-
-   // update existing entry or add new entry
-   result = rbtree_finddata(inst->cache_tree, entry);
+   // attempt to update existing entry
+   result = rbtree_finddata(inst->cache_tree, &cache_key);
    if (result != NULL)
    {  totp_cache_entry_unlink(result);
-      result->invalid_until = entry->invalid_until;
-      talloc_free(entry);
-      entry = result;
-   } else
-   {  rbtree_insert(inst->cache_tree, entry);
+      result->invalid_until = invalid_until;
+   };
+
+   // add new entry to cache if does not already exist
+   if (result == NULL)
+   {  result = totp_cache_entry_alloc(instance, vp->data.octets, vp->length, invalid_until);
+      if (result == NULL)
+      {  REDEBUG2("unable to allocate memory for totp_cache_entry_t");
+         pthread_mutex_unlock(inst->mutex);
+         return(-1);
+      };
+      rbtree_insert(inst->cache_tree, result);
    };
 
    // add entry to linked list
    if (inst->cache_list->prev != NULL)
-   {  inst->cache_list->prev->next  = entry;
-      entry->prev                   = inst->cache_list->prev;
+   {  inst->cache_list->prev->next  = result;
+      result->prev                  = inst->cache_list->prev;
    };
-   entry->next                      = inst->cache_list;
-   inst->cache_list->prev           = entry;
+   result->next                     = inst->cache_list;
+   inst->cache_list->prev           = result;
 
    pthread_mutex_unlock(inst->mutex);
 
