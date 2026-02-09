@@ -331,6 +331,13 @@ totp_used_unlink(
          totp_used_t *                 entry );
 
 
+static int
+totp_used_update(
+         void *                        instance,
+         REQUEST *                     request,
+         totp_params_t *               params );
+
+
 static ssize_t
 totp_xlat_code(
          UNUSED void *                 instance,
@@ -1258,6 +1265,71 @@ totp_used_unlink(
    entry->next = NULL;
 
    return;
+}
+
+
+int
+totp_used_update(
+         void *                        instance,
+         REQUEST *                     request,
+         totp_params_t *               params )
+{
+   rlm_totp_code_t *    inst;
+   totp_used_t *        entry;
+   totp_used_t *        result;
+   VALUE_PAIR *         vp;
+   uint64_t             expires;
+
+   rad_assert(instance != NULL);
+   rad_assert(request  != NULL);
+
+   inst = instance;
+
+   expires  = params->totp_cur_unix - params->totp_t0 + params->totp_time_offset;
+   expires /= params->totp_x;
+   expires--;
+   expires *= params->totp_x;
+
+   pthread_mutex_lock(inst->mutex);
+
+   totp_used_cleanup(instance, (time_t)expires);
+
+   vp = totp_used_key(instance, request);
+   if (vp == NULL)
+   {  pthread_mutex_unlock(inst->mutex);
+      return(-1);
+   };
+
+   entry = totp_used_alloc(instance, vp->data.octets, vp->length, 0);
+   if (entry == NULL)
+   {  REDEBUG2("unable to allocate memory for totp_used_t");
+      pthread_mutex_unlock(inst->mutex);
+      return(-1);
+   };
+   entry->entry_expires = expires + params->totp_x - 1;
+
+   // update existing entry or add new entry
+   result = rbtree_finddata(inst->used_tree, entry);
+   if (result != NULL)
+   {  totp_used_unlink(result);
+      result->entry_expires = entry->entry_expires;
+      talloc_free(entry);
+      entry = result;
+   } else
+   {  rbtree_insert(inst->used_tree, entry);
+   };
+
+   // add entry to linked list
+   if (inst->used_list->prev != NULL)
+   {  inst->used_list->prev->next   = entry;
+      entry->prev                   = inst->used_list->prev;
+   };
+   entry->next                   = inst->used_list;
+   inst->used_list->prev         = entry;
+
+   pthread_mutex_unlock(inst->mutex);
+
+   return(0);
 }
 
 
