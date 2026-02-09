@@ -295,6 +295,14 @@ totp_set_params_signed(
          int64_t *                     intp );
 
 
+static totp_used_t *
+totp_used_alloc(
+         void *                        ctx,
+         const uint8_t *               key,
+         size_t                        key_len,
+         time_t                        expires );
+
+
 static int
 totp_used_cmp(
          const void *                  ptr_a,
@@ -1095,6 +1103,35 @@ totp_set_params_signed(
    return(0);
 }
 
+
+totp_used_t *
+totp_used_alloc(
+         void *                        ctx,
+         const uint8_t *               key,
+         size_t                        key_len,
+         time_t                        expires )
+{
+   totp_used_t *     entry;
+
+   rad_assert(key != NULL);
+   rad_assert(key_len > 0);
+
+   if ((entry = talloc_size(ctx, sizeof(totp_used_t))) == NULL)
+      return(NULL);
+   memset(entry, 0, sizeof(totp_used_t));
+
+   if ((entry->key = talloc_size(entry, (key_len+1))) == NULL)
+   {  talloc_free(entry);
+      return(NULL);
+   };
+   memcpy(entry->key, key, key_len);
+
+   entry->key[key_len]  = '\0';
+   entry->keylen        = key_len;
+   entry->entry_expires = expires;
+
+   return(entry);
+}
 
 
 int
