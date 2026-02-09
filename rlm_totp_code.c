@@ -220,11 +220,6 @@ mod_post_auth(
          CC_HINT(nonnull);
 
 
-static int
-totp_algorithm_id(
-         const char *                  algo_name );
-
-
 static const char *
 totp_algorithm_name(
          int                           algo_id );
@@ -301,6 +296,11 @@ totp_cache_update(
 // algorithm prototypes //
 //----------------------//
 // MARK: cache prototypes
+
+static int
+totp_algo_algorithm_id(
+         const char *                  algo_name );
+
 
 static int
 totp_algo_calculate(
@@ -552,7 +552,7 @@ mod_instantiate(
    FR_INTEGER_BOUND_CHECK("otp_length",   inst->otp_length,    >=, 1);
    FR_INTEGER_BOUND_CHECK("otp_length",   inst->otp_length,    <=, 9);
 
-   if ((inst->totp_algo = totp_algorithm_id(inst->totp_algo_str)) == -1)
+   if ((inst->totp_algo = totp_algo_algorithm_id(inst->totp_algo_str)) == -1)
    {  WARN("Ignoring \"algorithm = %s\", forcing to \"algorithm = SHA1\"", inst->totp_algo_str);
       inst->totp_algo = RLM_TOTP_HMAC_SHA1;
    };
@@ -653,20 +653,6 @@ mod_post_auth(
          REQUEST *                     request)
 {
    return(RLM_MODULE_NOOP);
-}
-
-
-int
-totp_algorithm_id(
-         const char *                  algo_name )
-{
-   int idx;
-   if (!(strncasecmp(algo_name, "HMAC", 4)))
-      algo_name = &algo_name[4];
-   for(idx = 0; ((totp_algorithm_map[idx].name)); idx++)
-      if (!(strcasecmp(algo_name, totp_algorithm_map[idx].name)))
-         return(totp_algorithm_map[idx].id);
-   return(-1);
 }
 
 
@@ -1043,6 +1029,20 @@ totp_cache_update(
 // MARK: algorithm functions
 
 int
+totp_algo_algorithm_id(
+         const char *                  algo_name )
+{
+   int idx;
+   if (!(strncasecmp(algo_name, "HMAC", 4)))
+      algo_name = &algo_name[4];
+   for(idx = 0; ((totp_algorithm_map[idx].name)); idx++)
+      if (!(strcasecmp(algo_name, totp_algorithm_map[idx].name)))
+         return(totp_algorithm_map[idx].id);
+   return(-1);
+}
+
+
+int
 totp_algo_calculate(
          totp_params_t *               params )
 {
@@ -1187,7 +1187,7 @@ totp_algo_params_set(
    if (inst->vsa_algorithm != NULL)
    {  vp = totp_request_vp_by_dict(instance, request, inst->vsa_algorithm, TOTP_SCOPE_CONTROL);
       if ( (vp != NULL) && (vp->da->type == PW_TYPE_STRING) )
-      {  totp_algo = totp_algorithm_id(vp->data.strvalue);
+      {  totp_algo = totp_algo_algorithm_id(vp->data.strvalue);
          if (totp_algo != 0)
             params->totp_algo = totp_algo;
       };
