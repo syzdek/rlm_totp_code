@@ -264,6 +264,12 @@ totp_cache_entry_free(
          void *                        ptr );
 
 
+static VALUE_PAIR *
+totp_cache_entry_key(
+         void *                        instance,
+         REQUEST *                     request );
+
+
 static int
 totp_calculate(
          totp_params_t *               params );
@@ -318,12 +324,6 @@ totp_set_params_signed(
          REQUEST *                     request,
          const DICT_ATTR *             da,
          int64_t *                     intp );
-
-
-static VALUE_PAIR *
-totp_cache_entry_key(
-         void *                        instance,
-         REQUEST *                     request );
 
 
 static void
@@ -889,6 +889,28 @@ totp_cache_entry_free(
 }
 
 
+VALUE_PAIR *
+totp_cache_entry_key(
+         void *                        instance,
+         REQUEST *                     request )
+{
+   rlm_totp_code_t *       inst;
+   VALUE_PAIR *            vp;
+
+   rad_assert(instance != NULL);
+
+   inst = instance;
+
+   vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REQUEST);
+   if (vp == NULL)
+      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_CONTROL);
+   if (vp == NULL)
+      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REPLY);
+
+   return(vp);
+}
+
+
 int
 totp_calculate(
          totp_params_t *               params )
@@ -1226,28 +1248,6 @@ totp_set_params_signed(
    };
 
    return(0);
-}
-
-
-VALUE_PAIR *
-totp_cache_entry_key(
-         void *                        instance,
-         REQUEST *                     request )
-{
-   rlm_totp_code_t *       inst;
-   VALUE_PAIR *            vp;
-
-   rad_assert(instance != NULL);
-
-   inst = instance;
-
-   vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REQUEST);
-   if (vp == NULL)
-      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_CONTROL);
-   if (vp == NULL)
-      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REPLY);
-
-   return(vp);
 }
 
 
