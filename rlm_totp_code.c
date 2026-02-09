@@ -119,7 +119,7 @@
 
 typedef struct rlm_totp_code_t      rlm_totp_code_t;
 typedef struct _totp_algorithm      totp_algo_t;
-typedef struct _totp_cache_entry    totp_used_t;
+typedef struct _totp_cache_entry    totp_cache_entry_t;
 typedef struct _totp_params         totp_params_t;
 
 
@@ -148,7 +148,7 @@ struct rlm_totp_code_t
    bool              devel_debug;            //!< enable extra debug messages for developer
    int               totp_algo;              //!< HMAC cryptographic algorithm
    rbtree_t *        used_tree;
-   totp_used_t *     used_list;
+   totp_cache_entry_t *    used_list;
 #ifdef HAVE_PTHREAD_H
    pthread_mutex_t * mutex;
 #endif // HAVE_PTHREAD_H
@@ -165,8 +165,8 @@ struct _totp_cache_entry
 {  uint8_t *         key;              //!< value of User-Name attribute
    size_t            keylen;           //!< length of User-Name attribute
    time_t            entry_expires;    //!< epoch time when last used code will expire
-   totp_used_t *     prev;
-   totp_used_t *     next;
+   totp_cache_entry_t *    prev;
+   totp_cache_entry_t *    next;
 };
 
 
@@ -295,7 +295,7 @@ totp_set_params_signed(
          int64_t *                     intp );
 
 
-static totp_used_t *
+static totp_cache_entry_t *
 totp_used_alloc(
          void *                        ctx,
          const uint8_t *               key,
@@ -328,7 +328,7 @@ totp_used_key(
 
 static void
 totp_used_unlink(
-         totp_used_t *                 entry );
+         totp_cache_entry_t *          entry );
 
 
 static int
@@ -601,12 +601,12 @@ mod_instantiate(
    {  inst->used_tree = rbtree_create(instance, totp_used_cmp, totp_used_free, 0);
       if (inst->used_tree == NULL)
          return(-1);
-      inst->used_list = talloc_size(instance, sizeof(totp_used_t));
+      inst->used_list = talloc_size(instance, sizeof(totp_cache_entry_t));
       if (inst->used_list == NULL)
       { rbtree_free(inst->used_tree);
          return(-1);
       };
-      memset(inst->used_list, 0, sizeof(totp_used_t));
+      memset(inst->used_list, 0, sizeof(totp_cache_entry_t));
    };
 
    return(0);
@@ -1135,21 +1135,21 @@ totp_set_params_signed(
 }
 
 
-totp_used_t *
+totp_cache_entry_t *
 totp_used_alloc(
          void *                        ctx,
          const uint8_t *               key,
          size_t                        key_len,
          time_t                        expires )
 {
-   totp_used_t *     entry;
+   totp_cache_entry_t *    entry;
 
    rad_assert(key != NULL);
    rad_assert(key_len > 0);
 
-   if ((entry = talloc_size(ctx, sizeof(totp_used_t))) == NULL)
+   if ((entry = talloc_size(ctx, sizeof(totp_cache_entry_t))) == NULL)
       return(NULL);
-   memset(entry, 0, sizeof(totp_used_t));
+   memset(entry, 0, sizeof(totp_cache_entry_t));
 
    if ((entry->key = talloc_size(entry, (key_len+1))) == NULL)
    {  talloc_free(entry);
@@ -1171,7 +1171,7 @@ totp_used_cleanup(
          time_t                        t )
 {
    rlm_totp_code_t *       inst;
-   totp_used_t *           root;
+   totp_cache_entry_t *    root;
 
    rad_assert(instance != NULL);
 
@@ -1192,8 +1192,8 @@ totp_used_cmp(
 {
    int                  rc;
    size_t               keylen;
-   const totp_used_t *  entry_a;
-   const totp_used_t *  entry_b;
+   const totp_cache_entry_t * entry_a;
+   const totp_cache_entry_t * entry_b;
 
    entry_a  = *((const void * const *)ptr_a);
    entry_b  = *((const void * const *)ptr_b);
@@ -1213,7 +1213,7 @@ void
 totp_used_free(
          void *                        ptr )
 {
-   totp_used_t *        entry;
+   totp_cache_entry_t *        entry;
 
    if (!(ptr))
       return;
@@ -1254,7 +1254,7 @@ totp_used_key(
 
 void
 totp_used_unlink(
-         totp_used_t *                 entry )
+         totp_cache_entry_t *          entry )
 {
    if (entry->prev != NULL)
       entry->prev->next = entry->next;
@@ -1275,8 +1275,8 @@ totp_used_update(
          totp_params_t *               params )
 {
    rlm_totp_code_t *    inst;
-   totp_used_t *        entry;
-   totp_used_t *        result;
+   totp_cache_entry_t *    entry;
+   totp_cache_entry_t *    result;
    VALUE_PAIR *         vp;
    uint64_t             expires;
 
