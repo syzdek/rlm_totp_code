@@ -254,6 +254,12 @@ totp_cache_entry_alloc(
 
 
 static int
+totp_cache_entry_cmp(
+         const void *                  ptr_a,
+         const void *                  ptr_b );
+
+
+static int
 totp_calculate(
          totp_params_t *               params );
 
@@ -307,12 +313,6 @@ totp_set_params_signed(
          REQUEST *                     request,
          const DICT_ATTR *             da,
          int64_t *                     intp );
-
-
-static int
-totp_cache_entry_cmp(
-         const void *                  ptr_a,
-         const void *                  ptr_b );
 
 
 static void
@@ -845,6 +845,30 @@ totp_cache_entry_alloc(
 
 
 int
+totp_cache_entry_cmp(
+         const void *                  ptr_a,
+         const void *                  ptr_b )
+{
+   int                        rc;
+   size_t                     keylen;
+   const totp_cache_entry_t * entry_a;
+   const totp_cache_entry_t * entry_b;
+
+   entry_a  = *((const void * const *)ptr_a);
+   entry_b  = *((const void * const *)ptr_b);
+   keylen   = (entry_a->keylen < entry_b->keylen)
+            ?  entry_a->keylen
+            :  entry_b->keylen;
+
+   if ((rc = memcmp(entry_a->key, entry_b->key, keylen)) != 0)
+      return(rc);
+   if (entry_a->keylen == entry_b->keylen)
+      return(0);
+   return( (entry_a->keylen < entry_b->keylen) ? -1 : 1 );
+}
+
+
+int
 totp_calculate(
          totp_params_t *               params )
 {
@@ -1181,30 +1205,6 @@ totp_set_params_signed(
    };
 
    return(0);
-}
-
-
-int
-totp_cache_entry_cmp(
-         const void *                  ptr_a,
-         const void *                  ptr_b )
-{
-   int                        rc;
-   size_t                     keylen;
-   const totp_cache_entry_t * entry_a;
-   const totp_cache_entry_t * entry_b;
-
-   entry_a  = *((const void * const *)ptr_a);
-   entry_b  = *((const void * const *)ptr_b);
-   keylen   = (entry_a->keylen < entry_b->keylen)
-            ?  entry_a->keylen
-            :  entry_b->keylen;
-
-   if ((rc = memcmp(entry_a->key, entry_b->key, keylen)) != 0)
-      return(rc);
-   if (entry_a->keylen == entry_b->keylen)
-      return(0);
-   return( (entry_a->keylen < entry_b->keylen) ? -1 : 1 );
 }
 
 
