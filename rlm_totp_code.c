@@ -303,6 +303,12 @@ totp_used_alloc(
          time_t                        expires );
 
 
+static void
+totp_used_cleanup(
+         void *                        instance,
+         time_t                        t );
+
+
 static int
 totp_used_cmp(
          const void *                  ptr_a,
@@ -1138,6 +1144,26 @@ totp_used_alloc(
    entry->entry_expires = expires;
 
    return(entry);
+}
+
+
+void
+totp_used_cleanup(
+         void *                        instance,
+         time_t                        t )
+{
+   rlm_totp_code_t *       inst;
+   totp_used_t *           root;
+
+   rad_assert(instance != NULL);
+
+   inst  = instance;
+   root  = inst->used_list;
+
+   while( (root->next != NULL) && (root->entry_expires < t) )
+      totp_used_free(root->next);
+
+   return;
 }
 
 
