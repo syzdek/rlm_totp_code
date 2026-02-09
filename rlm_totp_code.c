@@ -269,10 +269,13 @@ totp_cache_entry_free(
          void *                        ptr );
 
 
-static VALUE_PAIR *
+static int
 totp_cache_entry_key(
          void *                        instance,
-         REQUEST *                     request );
+         REQUEST *                     request,
+         totp_cache_entry_t *          cache_key,
+         void *                        key_buff,
+         size_t                        key_buff_len );
 
 
 static void
@@ -915,10 +918,13 @@ totp_cache_entry_free(
 }
 
 
-VALUE_PAIR *
+int
 totp_cache_entry_key(
          void *                        instance,
-         REQUEST *                     request )
+         REQUEST *                     request,
+         totp_cache_entry_t *          cache_key,
+         void *                        key_buff,
+         size_t                        key_buff_len )
 {
    rlm_totp_code_t *       inst;
    VALUE_PAIR *            vp;
@@ -932,8 +938,21 @@ totp_cache_entry_key(
       vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_CONTROL);
    if (vp == NULL)
       vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REPLY);
+   if (vp == NULL)
+      return(-1);
 
-   return(vp);
+   // check value-pair used as cache key
+   if (vp->length >= key_buff_len)
+      return(-1);
+
+   // configure cache key
+   memset(cache_key, 0,       sizeof(totp_cache_entry_t));
+   memset(key_buff, 0,        key_buff_len);
+   memcpy(key_buff, vp->data.octets, vp->length);
+   cache_key->key    = key_buff;
+   cache_key->keylen = vp->length;
+
+   return(0);
 }
 
 
@@ -959,8 +978,8 @@ totp_cache_query(
          REQUEST *                     request,
          time_t *                      invalid_untilp )
 {
+   int                     rc;
    uint8_t                 cache_key_buff[MAX_STRING_LEN];
-   VALUE_PAIR *            vp;
    rlm_totp_code_t *       inst;
    totp_cache_entry_t      cache_key;
    totp_cache_entry_t *    result;
@@ -972,18 +991,10 @@ totp_cache_query(
    inst = instance;
    *invalid_untilp = 0;
 
-   // retrieve and check value-pair used as cache key
-   if ((vp = totp_cache_entry_key(instance, request)) == NULL)
-      return(-1);
-   if (vp->length >= sizeof(cache_key_buff))
-      return(-1);
-
    // configure cache key
-   memset(&cache_key, 0,      sizeof(cache_key));
-   memset(cache_key_buff, 0,  sizeof(cache_key_buff));
-   cache_key.key = cache_key_buff;
-   memcpy(cache_key_buff, vp->data.octets, vp->length);
-   cache_key.keylen = vp->length;
+   rc = totp_cache_entry_key(instance, request, &cache_key, cache_key_buff, sizeof(cache_key_buff));
+   if (rc == -1)
+      return(-1);
 
    // lookup cache entry
    pthread_mutex_lock(inst->mutex);
@@ -1002,11 +1013,11 @@ totp_cache_update(
          REQUEST *                     request,
          totp_params_t *               params )
 {
+   int                     rc;
    uint8_t                 cache_key_buff[MAX_STRING_LEN];
    rlm_totp_code_t *       inst;
    totp_cache_entry_t      cache_key;
    totp_cache_entry_t *    result;
-   VALUE_PAIR *            vp;
    uint64_t                time_cleanup;
    uint64_t                invalid_until;
 
@@ -1016,18 +1027,11 @@ totp_cache_update(
 
    inst = instance;
 
-   // retrieve and check value-pair used as cache key
-   if ((vp = totp_cache_entry_key(instance, request)) == NULL)
-      return(-1);
-   if (vp->length >= sizeof(cache_key_buff))
+   // configure cache key
+   rc = totp_cache_entry_key(instance, request, &cache_key, cache_key_buff, sizeof(cache_key_buff));
+   if (rc == -1)
       return(-1);
 
-   // configure cache key
-   memset(&cache_key, 0,      sizeof(cache_key));
-   memset(cache_key_buff, 0,  sizeof(cache_key_buff));
-   cache_key.key = cache_key_buff;
-   memcpy(cache_key_buff, vp->data.octets, vp->length);
-   cache_key.keylen = vp->length;
 
    pthread_mutex_lock(inst->mutex);
 
@@ -1048,7 +1052,7 @@ totp_cache_update(
 
    // add new entry to cache if does not already exist
    if (result == NULL)
-   {  result = totp_cache_entry_alloc(instance, vp->data.octets, vp->length, invalid_until);
+   {  result = totp_cache_entry_alloc(instance, cache_key.key, cache_key.keylen, invalid_until);
       if (result == NULL)
       {  REDEBUG2("unable to allocate memory for totp_cache_entry_t");
          pthread_mutex_unlock(inst->mutex);
