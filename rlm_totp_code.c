@@ -332,7 +332,7 @@ totp_cache_entry_unlink(
 
 
 static int
-totp_used_update(
+totp_cache_update(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params );
@@ -1269,7 +1269,7 @@ totp_cache_entry_unlink(
 
 
 int
-totp_used_update(
+totp_cache_update(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params )
