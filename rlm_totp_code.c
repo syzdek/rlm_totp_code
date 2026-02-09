@@ -148,7 +148,7 @@ struct rlm_totp_code_t
    bool                    devel_debug;            //!< enable extra debug messages for developer
    int                     totp_algo;              //!< HMAC cryptographic algorithm
    rbtree_t *              cache_tree;
-   totp_cache_entry_t *    used_list;
+   totp_cache_entry_t *    cache_list;
 #ifdef HAVE_PTHREAD_H
    pthread_mutex_t *       mutex;
 #endif // HAVE_PTHREAD_H
@@ -596,17 +596,17 @@ mod_instantiate(
 
    // initialize cache and list
    inst->cache_tree = NULL;
-   inst->used_list = NULL;
+   inst->cache_list = NULL;
    if (!(inst->allow_reuse))
    {  inst->cache_tree = rbtree_create(instance, totp_cache_entry_cmp, totp_cache_entry_free, 0);
       if (inst->cache_tree == NULL)
          return(-1);
-      inst->used_list = talloc_size(instance, sizeof(totp_cache_entry_t));
-      if (inst->used_list == NULL)
+      inst->cache_list = talloc_size(instance, sizeof(totp_cache_entry_t));
+      if (inst->cache_list == NULL)
       { rbtree_free(inst->cache_tree);
          return(-1);
       };
-      memset(inst->used_list, 0, sizeof(totp_cache_entry_t));
+      memset(inst->cache_list, 0, sizeof(totp_cache_entry_t));
    };
 
    return(0);
@@ -1176,7 +1176,7 @@ totp_cache_cleanup(
    rad_assert(instance != NULL);
 
    inst  = instance;
-   root  = inst->used_list;
+   root  = inst->cache_list;
 
    while( (root->next != NULL) && (root->entry_expires < t) )
       rbtree_deletebydata(inst->cache_tree, root->next);
@@ -1320,12 +1320,12 @@ totp_cache_update(
    };
 
    // add entry to linked list
-   if (inst->used_list->prev != NULL)
-   {  inst->used_list->prev->next   = entry;
-      entry->prev                   = inst->used_list->prev;
+   if (inst->cache_list->prev != NULL)
+   {  inst->cache_list->prev->next   = entry;
+      entry->prev                   = inst->cache_list->prev;
    };
-   entry->next                   = inst->used_list;
-   inst->used_list->prev         = entry;
+   entry->next                   = inst->cache_list;
+   inst->cache_list->prev         = entry;
 
    pthread_mutex_unlock(inst->mutex);
 
