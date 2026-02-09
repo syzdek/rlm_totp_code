@@ -960,6 +960,7 @@ totp_cache_update(
 
    rad_assert(instance != NULL);
    rad_assert(request  != NULL);
+   rad_assert(params   != NULL);
 
    inst = instance;
 
