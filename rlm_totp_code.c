@@ -327,7 +327,7 @@ totp_used_key(
 
 
 static void
-totp_used_unlink(
+totp_cache_entry_unlink(
          totp_cache_entry_t *          entry );
 
 
@@ -1220,7 +1220,7 @@ totp_cache_entry_free(
    entry = ptr;
 
    // removes from linked list
-   totp_used_unlink(entry);
+   totp_cache_entry_unlink(entry);
 
    if ((entry->key))
       free(entry->key);
@@ -1253,7 +1253,7 @@ totp_used_key(
 
 
 void
-totp_used_unlink(
+totp_cache_entry_unlink(
          totp_cache_entry_t *          entry )
 {
    if (entry->prev != NULL)
@@ -1311,7 +1311,7 @@ totp_used_update(
    // update existing entry or add new entry
    result = rbtree_finddata(inst->used_tree, entry);
    if (result != NULL)
-   {  totp_used_unlink(result);
+   {  totp_cache_entry_unlink(result);
       result->entry_expires = entry->entry_expires;
       talloc_free(entry);
       entry = result;
