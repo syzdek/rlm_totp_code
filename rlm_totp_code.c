@@ -259,6 +259,11 @@ totp_cache_entry_cmp(
          const void *                  ptr_b );
 
 
+static void
+totp_cache_entry_free(
+         void *                        ptr );
+
+
 static int
 totp_calculate(
          totp_params_t *               params );
@@ -313,11 +318,6 @@ totp_set_params_signed(
          REQUEST *                     request,
          const DICT_ATTR *             da,
          int64_t *                     intp );
-
-
-static void
-totp_cache_entry_free(
-         void *                        ptr );
 
 
 static VALUE_PAIR *
@@ -868,6 +868,27 @@ totp_cache_entry_cmp(
 }
 
 
+void
+totp_cache_entry_free(
+         void *                        ptr )
+{
+   totp_cache_entry_t *        entry;
+
+   if (!(ptr))
+      return;
+   entry = ptr;
+
+   // removes from linked list
+   totp_cache_entry_unlink(entry);
+
+   if ((entry->key))
+      free(entry->key);
+   free(entry);
+
+   return;
+}
+
+
 int
 totp_calculate(
          totp_params_t *               params )
@@ -1205,27 +1226,6 @@ totp_set_params_signed(
    };
 
    return(0);
-}
-
-
-void
-totp_cache_entry_free(
-         void *                        ptr )
-{
-   totp_cache_entry_t *        entry;
-
-   if (!(ptr))
-      return;
-   entry = ptr;
-
-   // removes from linked list
-   totp_cache_entry_unlink(entry);
-
-   if ((entry->key))
-      free(entry->key);
-   free(entry);
-
-   return;
 }
 
 
