@@ -191,6 +191,11 @@ struct _totp_params
 //////////////////
 // MARK: - Prototypes
 
+//-------------------//
+// module prototypes //
+//-------------------//
+// MARK: module prototypes
+
 static int
 mod_bootstrap(
          CONF_SECTION *			         conf,
@@ -225,6 +230,11 @@ totp_algorithm_name(
          int                           algo_id );
 
 
+//-------------------//
+// base32 prototypes //
+//-------------------//
+// MARK: base32 prototypes
+
 static ssize_t
 totp_base32_decode(
          uint8_t *                     dst,
@@ -238,6 +248,11 @@ totp_base32_verify(
          const char *                  src,
          size_t                        srclen );
 
+
+//------------------//
+// cache prototypes //
+//------------------//
+// MARK: cache prototypes
 
 static void
 totp_cache_cleanup(
@@ -281,6 +296,11 @@ totp_cache_update(
          REQUEST *                     request,
          totp_params_t *               params );
 
+
+//----------------------//
+// algorithm prototypes //
+//----------------------//
+// MARK: cache prototypes
 
 static int
 totp_calculate(
@@ -337,6 +357,11 @@ totp_set_params_signed(
          const DICT_ATTR *             da,
          int64_t *                     intp );
 
+
+//-----------------//
+// xlat prototypes //
+//-----------------//
+// MARK: xlat prototypes
 
 static ssize_t
 totp_xlat_code(
@@ -435,6 +460,11 @@ static totp_algo_t totp_algorithm_map[] =
 //             //
 /////////////////
 // MARK: - Functions
+
+//------------------//
+// module functions //
+//------------------//
+// MARK: module functions
 
 int
 mod_bootstrap(
@@ -647,6 +677,11 @@ totp_algorithm_name(
 }
 
 
+//------------------//
+// base32 functions //
+//------------------//
+// MARK: base32 functions
+
 ssize_t
 totp_base32_decode(
          uint8_t *                     dst,
@@ -793,6 +828,11 @@ totp_base32_verify(
    return((datlen * 5) / 8);
 }
 
+
+//-----------------//
+// cache functions //
+//-----------------//
+// MARK: cache functions
 
 void
 totp_cache_cleanup(
@@ -991,6 +1031,11 @@ totp_cache_update(
    return(0);
 }
 
+
+//---------------------//
+// algorithm functions //
+//---------------------//
+// MARK: algorithm functions
 
 int
 totp_calculate(
@@ -1331,6 +1376,11 @@ totp_set_params_signed(
    return(0);
 }
 
+
+//----------------//
+// xlat functions //
+//----------------//
+// MARK: xlat functions
 
 ssize_t
 totp_xlat_code(
