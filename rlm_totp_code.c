@@ -296,7 +296,7 @@ totp_set_params_signed(
 
 
 static totp_cache_entry_t *
-totp_used_alloc(
+totp_cache_entry_alloc(
          void *                        ctx,
          const uint8_t *               key,
          size_t                        key_len,
@@ -1136,7 +1136,7 @@ totp_set_params_signed(
 
 
 totp_cache_entry_t *
-totp_used_alloc(
+totp_cache_entry_alloc(
          void *                        ctx,
          const uint8_t *               key,
          size_t                        key_len,
@@ -1300,7 +1300,7 @@ totp_used_update(
       return(-1);
    };
 
-   entry = totp_used_alloc(instance, vp->data.octets, vp->length, 0);
+   entry = totp_cache_entry_alloc(instance, vp->data.octets, vp->length, 0);
    if (entry == NULL)
    {  REDEBUG2("unable to allocate memory for totp_used_t");
       pthread_mutex_unlock(inst->mutex);
