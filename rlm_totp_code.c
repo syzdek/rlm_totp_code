@@ -1161,7 +1161,7 @@ totp_used_cleanup(
    root  = inst->used_list;
 
    while( (root->next != NULL) && (root->entry_expires < t) )
-      totp_used_free(root->next);
+      rbtree_deletebydata(inst->used_tree, root->next);
 
    return;
 }
