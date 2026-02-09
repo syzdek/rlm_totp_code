@@ -321,7 +321,7 @@ totp_cache_entry_free(
 
 
 static VALUE_PAIR *
-totp_used_key(
+totp_cache_entry_key(
          void *                        instance,
          REQUEST *                     request );
 
@@ -1231,7 +1231,7 @@ totp_cache_entry_free(
 
 
 VALUE_PAIR *
-totp_used_key(
+totp_cache_entry_key(
          void *                        instance,
          REQUEST *                     request )
 {
@@ -1294,7 +1294,7 @@ totp_used_update(
 
    totp_cache_cleanup(instance, (time_t)expires);
 
-   vp = totp_used_key(instance, request);
+   vp = totp_cache_entry_key(instance, request);
    if (vp == NULL)
    {  pthread_mutex_unlock(inst->mutex);
       return(-1);
