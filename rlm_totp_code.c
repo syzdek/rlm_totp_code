@@ -119,7 +119,7 @@
 
 typedef struct rlm_totp_code_t      rlm_totp_code_t;
 typedef struct _totp_algorithm      totp_algo_t;
-typedef struct _totp_used           totp_used_t;
+typedef struct _totp_cache_entry    totp_used_t;
 typedef struct _totp_params         totp_params_t;
 
 
@@ -161,7 +161,7 @@ struct _totp_algorithm
 };
 
 
-struct _totp_used
+struct _totp_cache_entry
 {  uint8_t *         key;              //!< value of User-Name attribute
    size_t            keylen;           //!< length of User-Name attribute
    time_t            entry_expires;    //!< epoch time when last used code will expire
