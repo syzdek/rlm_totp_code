@@ -318,23 +318,6 @@ totp_hmac(
          size_t                        key_len );
 
 
-static VALUE_PAIR *
-totp_request_vp_by_dict(
-         UNUSED void *                 instance,
-         REQUEST *                     request,
-         const DICT_ATTR *             da,
-         int                           scope );
-
-
-static VALUE_PAIR *
-totp_request_vp_by_name(
-         UNUSED void *                 instance,
-         REQUEST *                     request,
-         const char *                  attrstr,
-         size_t                        attrstr_len,
-         int                           default_scope );
-
-
 static int
 totp_set_params(
          void *                        instance,
@@ -356,6 +339,28 @@ totp_set_params_signed(
          REQUEST *                     request,
          const DICT_ATTR *             da,
          int64_t *                     intp );
+
+
+//--------------------------//
+// miscellaneous prototypes //
+//--------------------------//
+// MARK: miscellaneous prototypes
+
+static VALUE_PAIR *
+totp_request_vp_by_dict(
+         UNUSED void *                 instance,
+         REQUEST *                     request,
+         const DICT_ATTR *             da,
+         int                           scope );
+
+
+static VALUE_PAIR *
+totp_request_vp_by_name(
+         UNUSED void *                 instance,
+         REQUEST *                     request,
+         const char *                  attrstr,
+         size_t                        attrstr_len,
+         int                           default_scope );
 
 
 //-----------------//
@@ -1146,83 +1151,6 @@ totp_hmac(
 }
 
 
-VALUE_PAIR *
-totp_request_vp_by_dict(
-         UNUSED void *                 instance,
-         REQUEST *                     request,
-         const DICT_ATTR *             da,
-         int                           scope )
-{
-   VALUE_PAIR *            vps;
-
-   rad_assert(instance        != NULL);
-   rad_assert(request         != NULL);
-
-   if (da == NULL)
-      return(NULL);
-
-   switch(scope)
-   {  case TOTP_SCOPE_CONTROL:   vps = request->config;      break;
-      case TOTP_SCOPE_REPLY:     vps = request->reply->vps;  break;
-      case TOTP_SCOPE_REQUEST:   vps = request->packet->vps; break;
-      default:                   vps = request->config;      break;
-   };
-
-   return(fr_pair_find_by_num(vps, da->attr, da->vendor, TAG_ANY));
-}
-
-
-VALUE_PAIR *
-totp_request_vp_by_name(
-         UNUSED void *                 instance,
-         REQUEST *                     request,
-         const char *                  attr_str,
-         size_t                        attr_str_len,
-         int                           default_scope )
-{
-   char                    buffer[MAX_STRING_LEN];
-   char *                  attr_scope;
-   char *                  attr_name;
-   const DICT_ATTR *       da;
-
-   rad_assert(instance        != NULL);
-   rad_assert(request         != NULL);
-   rad_assert(attr_str        != NULL);
-   rad_assert(attr_str_len    < sizeof(buffer));
-   rad_assert(attr_str_len    > 0);
-
-   // initialize variables
-   memcpy(buffer, attr_str, attr_str_len);
-   buffer[attr_str_len] = '\0';
-   attr_scope           = NULL;
-   attr_name            = NULL;
-
-   // split attribute scope and attribute name
-   if ((attr_name = strchr(buffer, ':')) != NULL)
-   {  attr_name[0]   = '\0';
-      attr_name      = &attr_name[1];
-      attr_scope     = buffer;
-   };
-   if (attr_name == NULL)
-      attr_name = buffer;
-
-   // retrieve dictionary entry
-   da = dict_attrbyname(attr_name);
-   if (da == NULL)
-      return(NULL);
-
-   // set attribute scope
-   if (attr_scope != NULL)
-   {  if (!(strcasecmp(attr_scope, "control")))       default_scope = TOTP_SCOPE_CONTROL;
-      else if (!(strcasecmp(attr_scope, "reply")))    default_scope = TOTP_SCOPE_REPLY;
-      else if (!(strcasecmp(attr_scope, "request")))  default_scope = TOTP_SCOPE_REQUEST;
-      else return(NULL);
-   };
-
-   return(totp_request_vp_by_dict(instance, request, da, default_scope));
-}
-
-
 int
 totp_set_params(
          void *                        instance,
@@ -1374,6 +1302,88 @@ totp_set_params_signed(
    };
 
    return(0);
+}
+
+
+//-------------------------//
+// miscellaneous functions //
+//-------------------------//
+// MARK: miscellaneous functions
+
+VALUE_PAIR *
+totp_request_vp_by_dict(
+         UNUSED void *                 instance,
+         REQUEST *                     request,
+         const DICT_ATTR *             da,
+         int                           scope )
+{
+   VALUE_PAIR *            vps;
+
+   rad_assert(instance        != NULL);
+   rad_assert(request         != NULL);
+
+   if (da == NULL)
+      return(NULL);
+
+   switch(scope)
+   {  case TOTP_SCOPE_CONTROL:   vps = request->config;      break;
+      case TOTP_SCOPE_REPLY:     vps = request->reply->vps;  break;
+      case TOTP_SCOPE_REQUEST:   vps = request->packet->vps; break;
+      default:                   vps = request->config;      break;
+   };
+
+   return(fr_pair_find_by_num(vps, da->attr, da->vendor, TAG_ANY));
+}
+
+
+VALUE_PAIR *
+totp_request_vp_by_name(
+         UNUSED void *                 instance,
+         REQUEST *                     request,
+         const char *                  attr_str,
+         size_t                        attr_str_len,
+         int                           default_scope )
+{
+   char                    buffer[MAX_STRING_LEN];
+   char *                  attr_scope;
+   char *                  attr_name;
+   const DICT_ATTR *       da;
+
+   rad_assert(instance        != NULL);
+   rad_assert(request         != NULL);
+   rad_assert(attr_str        != NULL);
+   rad_assert(attr_str_len    < sizeof(buffer));
+   rad_assert(attr_str_len    > 0);
+
+   // initialize variables
+   memcpy(buffer, attr_str, attr_str_len);
+   buffer[attr_str_len] = '\0';
+   attr_scope           = NULL;
+   attr_name            = NULL;
+
+   // split attribute scope and attribute name
+   if ((attr_name = strchr(buffer, ':')) != NULL)
+   {  attr_name[0]   = '\0';
+      attr_name      = &attr_name[1];
+      attr_scope     = buffer;
+   };
+   if (attr_name == NULL)
+      attr_name = buffer;
+
+   // retrieve dictionary entry
+   da = dict_attrbyname(attr_name);
+   if (da == NULL)
+      return(NULL);
+
+   // set attribute scope
+   if (attr_scope != NULL)
+   {  if (!(strcasecmp(attr_scope, "control")))       default_scope = TOTP_SCOPE_CONTROL;
+      else if (!(strcasecmp(attr_scope, "reply")))    default_scope = TOTP_SCOPE_REPLY;
+      else if (!(strcasecmp(attr_scope, "request")))  default_scope = TOTP_SCOPE_REQUEST;
+      else return(NULL);
+   };
+
+   return(totp_request_vp_by_dict(instance, request, da, default_scope));
 }
 
 
