@@ -326,7 +326,7 @@ totp_algo_params_set(
 
 
 int
-totp_set_params_integer(
+totp_algo_params_set_integer(
          void *                        instance,
          REQUEST *                     request,
          const DICT_ATTR *             da,
@@ -1180,9 +1180,9 @@ totp_algo_params_set(
       return(0);
 
    totp_set_params_signed(instance, request, inst->vsa_time_offset, &params->totp_time_offset);
-   totp_set_params_integer(instance, request, inst->vsa_unix_time,  &params->totp_t0);
-   totp_set_params_integer(instance, request, inst->vsa_time_step,  &params->totp_x);
-   totp_set_params_integer(instance, request, inst->vsa_otp_length, &params->otp_length);
+   totp_algo_params_set_integer(instance, request, inst->vsa_unix_time,  &params->totp_t0);
+   totp_algo_params_set_integer(instance, request, inst->vsa_time_step,  &params->totp_x);
+   totp_algo_params_set_integer(instance, request, inst->vsa_otp_length, &params->otp_length);
 
    if (inst->vsa_algorithm != NULL)
    {  vp = totp_request_vp_by_dict(instance, request, inst->vsa_algorithm, TOTP_SCOPE_CONTROL);
@@ -1198,7 +1198,7 @@ totp_algo_params_set(
 
 
 int
-totp_set_params_integer(
+totp_algo_params_set_integer(
          void *                        instance,
          REQUEST *                     request,
          const DICT_ATTR *             da,
