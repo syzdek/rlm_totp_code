@@ -239,6 +239,12 @@ totp_base32_verify(
          size_t                        srclen );
 
 
+static void
+totp_cache_cleanup(
+         void *                        instance,
+         time_t                        t );
+
+
 static totp_cache_entry_t *
 totp_cache_entry_alloc(
          void *                        ctx,
@@ -301,12 +307,6 @@ totp_set_params_signed(
          REQUEST *                     request,
          const DICT_ATTR *             da,
          int64_t *                     intp );
-
-
-static void
-totp_cache_cleanup(
-         void *                        instance,
-         time_t                        t );
 
 
 static int
@@ -794,6 +794,26 @@ totp_base32_verify(
 }
 
 
+void
+totp_cache_cleanup(
+         void *                        instance,
+         time_t                        t )
+{
+   rlm_totp_code_t *       inst;
+   totp_cache_entry_t *    root;
+
+   rad_assert(instance != NULL);
+
+   inst  = instance;
+   root  = inst->cache_list;
+
+   while( (root->next != NULL) && (root->entry_expires < t) )
+      rbtree_deletebydata(inst->cache_tree, root->next);
+
+   return;
+}
+
+
 totp_cache_entry_t *
 totp_cache_entry_alloc(
          void *                        ctx,
@@ -1161,26 +1181,6 @@ totp_set_params_signed(
    };
 
    return(0);
-}
-
-
-void
-totp_cache_cleanup(
-         void *                        instance,
-         time_t                        t )
-{
-   rlm_totp_code_t *       inst;
-   totp_cache_entry_t *    root;
-
-   rad_assert(instance != NULL);
-
-   inst  = instance;
-   root  = inst->cache_list;
-
-   while( (root->next != NULL) && (root->entry_expires < t) )
-      rbtree_deletebydata(inst->cache_tree, root->next);
-
-   return;
 }
 
 
