@@ -320,6 +320,11 @@ totp_used_free(
          void *                        ptr );
 
 
+static void
+totp_used_unlink(
+         totp_used_t *                 entry );
+
+
 static ssize_t
 totp_xlat_code(
          UNUSED void *                 instance,
@@ -1202,14 +1207,27 @@ totp_used_free(
    entry = ptr;
 
    // removes from linked list
-   if (entry->prev != NULL)
-      entry->prev->next = entry->next;
-   if (entry->next != NULL)
-      entry->next->prev = entry->prev;
+   totp_used_unlink(entry);
 
    if ((entry->key))
       free(entry->key);
    free(entry);
+
+   return;
+}
+
+
+void
+totp_used_unlink(
+         totp_used_t *                 entry )
+{
+   if (entry->prev != NULL)
+      entry->prev->next = entry->next;
+   entry->prev = NULL;
+
+   if (entry->next != NULL)
+      entry->next->prev = entry->prev;
+   entry->next = NULL;
 
    return;
 }
