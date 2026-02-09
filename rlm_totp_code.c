@@ -270,6 +270,11 @@ totp_cache_entry_key(
          REQUEST *                     request );
 
 
+static void
+totp_cache_entry_unlink(
+         totp_cache_entry_t *          entry );
+
+
 static int
 totp_calculate(
          totp_params_t *               params );
@@ -324,11 +329,6 @@ totp_set_params_signed(
          REQUEST *                     request,
          const DICT_ATTR *             da,
          int64_t *                     intp );
-
-
-static void
-totp_cache_entry_unlink(
-         totp_cache_entry_t *          entry );
 
 
 static int
@@ -911,6 +911,22 @@ totp_cache_entry_key(
 }
 
 
+void
+totp_cache_entry_unlink(
+         totp_cache_entry_t *          entry )
+{
+   if (entry->prev != NULL)
+      entry->prev->next = entry->next;
+   entry->prev = NULL;
+
+   if (entry->next != NULL)
+      entry->next->prev = entry->prev;
+   entry->next = NULL;
+
+   return;
+}
+
+
 int
 totp_calculate(
          totp_params_t *               params )
@@ -1248,22 +1264,6 @@ totp_set_params_signed(
    };
 
    return(0);
-}
-
-
-void
-totp_cache_entry_unlink(
-         totp_cache_entry_t *          entry )
-{
-   if (entry->prev != NULL)
-      entry->prev->next = entry->next;
-   entry->prev = NULL;
-
-   if (entry->next != NULL)
-      entry->next->prev = entry->prev;
-   entry->next = NULL;
-
-   return;
 }
 
 
