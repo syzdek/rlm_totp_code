@@ -1313,7 +1313,6 @@ totp_xlat_code(
    params.key     = key;
    params.key_len = key_len;
 
-//   code = totp_calculate(inst->totp_algo, inst->totp_t0, inst->totp_x, totp_time, key, key_len, inst->otp_length, NULL);
    code = totp_calculate(&params);
    if ((inst->devel_debug))
    {  RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algorithm_name((int)params.totp_algo));
