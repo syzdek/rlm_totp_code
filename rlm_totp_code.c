@@ -972,14 +972,16 @@ totp_cache_query(
    inst = instance;
    *invalid_untilp = 0;
 
-   // configure cache key
-   memset(&cache_key, 0,      sizeof(cache_key));
-   memset(cache_key_buff, 0,  sizeof(cache_key_buff));
-   cache_key.key = cache_key_buff;
+   // retrieve and check value-pair used as cache key
    if ((vp = totp_cache_entry_key(instance, request)) == NULL)
       return(-1);
    if (vp->length >= sizeof(cache_key_buff))
       return(-1);
+
+   // configure cache key
+   memset(&cache_key, 0,      sizeof(cache_key));
+   memset(cache_key_buff, 0,  sizeof(cache_key_buff));
+   cache_key.key = cache_key_buff;
    memcpy(cache_key_buff, vp->data.octets, vp->length);
    cache_key.keylen = vp->length;
 
