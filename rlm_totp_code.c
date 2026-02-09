@@ -498,9 +498,9 @@ mod_instantiate(
 
    rad_assert(instance != NULL);
 
-   inst                    = instance;
-   inst->mutex             = NULL;
-   inst->cache_tree   = NULL;
+   inst              = instance;
+   inst->mutex       = NULL;
+   inst->cache_tree  = NULL;
 
    // initialize mutex lock
    inst->mutex = NULL;
@@ -1321,11 +1321,11 @@ totp_cache_update(
 
    // add entry to linked list
    if (inst->cache_list->prev != NULL)
-   {  inst->cache_list->prev->next   = entry;
+   {  inst->cache_list->prev->next  = entry;
       entry->prev                   = inst->cache_list->prev;
    };
-   entry->next                   = inst->cache_list;
-   inst->cache_list->prev         = entry;
+   entry->next                      = inst->cache_list;
+   inst->cache_list->prev           = entry;
 
    pthread_mutex_unlock(inst->mutex);
 
