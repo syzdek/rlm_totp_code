@@ -125,62 +125,62 @@ typedef struct _totp_params         totp_params_t;
 
 // modules's structure for the configuration variables
 struct rlm_totp_code_t
-{  char const *      name;                   //!< name of this instance */
-   const char *      totp_algo_str;          //!< name of HMAC cryptographic algorithm
-   const char *      vsa_cache_key_name;     //!< name of VSA to use as the cache key
-   const char *      vsa_time_offset_name;   //!< name of VSA which overrides totp_time_offset
-   const char *      vsa_unix_time_name;     //!< name of VSA which overrides totp_t0
-   const char *      vsa_time_step_name;     //!< name of VSA which overrides totp_x
-   const char *      vsa_otp_length_name;    //!< name of VSA which overrides otp_length
-   const char *      vsa_algorithm_name;     //!< name of VSA which overrides totp_algo
-   const DICT_ATTR * vsa_cache_key;          //!< dictionary entry for VSA to use as the cache key
-   const DICT_ATTR * vsa_time_offset;        //!< dictionary entry for VSA which overrides totp_time_offset
-   const DICT_ATTR * vsa_unix_time;          //!< dictionary entry for VSA which overrides totp_t0
-   const DICT_ATTR * vsa_time_step;          //!< dictionary entry for VSA which overrides totp_x
-   const DICT_ATTR * vsa_otp_length;         //!< dictionary entry for VSA which overrides otp_length
-   const DICT_ATTR * vsa_algorithm;          //!< dictionary entry for VSA which overrides totp_algo
-   uint32_t          totp_t0;                //!< Unix time to start counting time steps (default: 0)
-   uint32_t          totp_x;                 //!< time step in seconds (default: 30 seconds)
-   int32_t           totp_time_offset;       //!< adjust current time by seconds
-   uint32_t          otp_length;             //!< length of output TOTP code
-   bool              allow_override;         //!< allow TOTP parameters to be overriden by RADIUS attributes
-   bool              allow_reuse;            //!< allow TOTP codes to be re-used
-   bool              devel_debug;            //!< enable extra debug messages for developer
-   int               totp_algo;              //!< HMAC cryptographic algorithm
-   rbtree_t *        used_tree;
+{  char const *            name;                   //!< name of this instance */
+   const char *            totp_algo_str;          //!< name of HMAC cryptographic algorithm
+   const char *            vsa_cache_key_name;     //!< name of VSA to use as the cache key
+   const char *            vsa_time_offset_name;   //!< name of VSA which overrides totp_time_offset
+   const char *            vsa_unix_time_name;     //!< name of VSA which overrides totp_t0
+   const char *            vsa_time_step_name;     //!< name of VSA which overrides totp_x
+   const char *            vsa_otp_length_name;    //!< name of VSA which overrides otp_length
+   const char *            vsa_algorithm_name;     //!< name of VSA which overrides totp_algo
+   const DICT_ATTR *       vsa_cache_key;          //!< dictionary entry for VSA to use as the cache key
+   const DICT_ATTR *       vsa_time_offset;        //!< dictionary entry for VSA which overrides totp_time_offset
+   const DICT_ATTR *       vsa_unix_time;          //!< dictionary entry for VSA which overrides totp_t0
+   const DICT_ATTR *       vsa_time_step;          //!< dictionary entry for VSA which overrides totp_x
+   const DICT_ATTR *       vsa_otp_length;         //!< dictionary entry for VSA which overrides otp_length
+   const DICT_ATTR *       vsa_algorithm;          //!< dictionary entry for VSA which overrides totp_algo
+   uint32_t                totp_t0;                //!< Unix time to start counting time steps (default: 0)
+   uint32_t                totp_x;                 //!< time step in seconds (default: 30 seconds)
+   int32_t                 totp_time_offset;       //!< adjust current time by seconds
+   uint32_t                otp_length;             //!< length of output TOTP code
+   bool                    allow_override;         //!< allow TOTP parameters to be overriden by RADIUS attributes
+   bool                    allow_reuse;            //!< allow TOTP codes to be re-used
+   bool                    devel_debug;            //!< enable extra debug messages for developer
+   int                     totp_algo;              //!< HMAC cryptographic algorithm
+   rbtree_t *              used_tree;
    totp_cache_entry_t *    used_list;
 #ifdef HAVE_PTHREAD_H
-   pthread_mutex_t * mutex;
+   pthread_mutex_t *       mutex;
 #endif // HAVE_PTHREAD_H
 };
 
 
 struct _totp_algorithm
-{  const char *      name;
-   int               id;
+{  const char *            name;
+   int                     id;
 };
 
 
 struct _totp_cache_entry
-{  uint8_t *         key;              //!< value of User-Name attribute
-   size_t            keylen;           //!< length of User-Name attribute
-   time_t            entry_expires;    //!< epoch time when last used code will expire
+{  uint8_t *               key;              //!< value of User-Name attribute
+   size_t                  keylen;           //!< length of User-Name attribute
+   time_t                  entry_expires;    //!< epoch time when last used code will expire
    totp_cache_entry_t *    prev;
    totp_cache_entry_t *    next;
 };
 
 
 struct _totp_params
-{  uint64_t          totp_t0;          //!< Unix time to start counting time steps
-   uint64_t          totp_x;           //!< time step in seconds
-   uint64_t          totp_cur_unix;    //!< current Unix time
-   uint64_t          totp_t;           //!< number of time steps since t0
-   int64_t           totp_time_offset; //!< amount of seconds to adjust .totp_cur_unix
-   uint64_t          totp_algo;        //!< HMAC algorithm
-   uint64_t          otp_length;       //!< requested length of One-Time-Password
-   size_t            key_len;          //!< length of HMAC key
-   const uint8_t *   key;              //!< HAMC key
-   char              otp[16];
+{  uint64_t                totp_t0;          //!< Unix time to start counting time steps
+   uint64_t                totp_x;           //!< time step in seconds
+   uint64_t                totp_cur_unix;    //!< current Unix time
+   uint64_t                totp_t;           //!< number of time steps since t0
+   int64_t                 totp_time_offset; //!< amount of seconds to adjust .totp_cur_unix
+   uint64_t                totp_algo;        //!< HMAC algorithm
+   uint64_t                otp_length;       //!< requested length of One-Time-Password
+   size_t                  key_len;          //!< length of HMAC key
+   const uint8_t *         key;              //!< HAMC key
+   char                    otp[16];
 };
 
 
@@ -1190,8 +1190,8 @@ totp_used_cmp(
          const void *                  ptr_a,
          const void *                  ptr_b )
 {
-   int                  rc;
-   size_t               keylen;
+   int                        rc;
+   size_t                     keylen;
    const totp_cache_entry_t * entry_a;
    const totp_cache_entry_t * entry_b;
 
@@ -1274,11 +1274,11 @@ totp_used_update(
          REQUEST *                     request,
          totp_params_t *               params )
 {
-   rlm_totp_code_t *    inst;
+   rlm_totp_code_t *       inst;
    totp_cache_entry_t *    entry;
    totp_cache_entry_t *    result;
-   VALUE_PAIR *         vp;
-   uint64_t             expires;
+   VALUE_PAIR *            vp;
+   uint64_t                expires;
 
    rad_assert(instance != NULL);
    rad_assert(request  != NULL);
