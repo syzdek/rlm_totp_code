@@ -281,6 +281,13 @@ totp_cache_entry_unlink(
 
 
 static int
+totp_cache_query(
+         void *                        instance,
+         REQUEST *                     request,
+         time_t *                      invalid_untilp );
+
+
+static int
 totp_cache_update(
          void *                        instance,
          REQUEST *                     request,
@@ -943,6 +950,47 @@ totp_cache_entry_unlink(
    entry->next = NULL;
 
    return;
+}
+
+
+int
+totp_cache_query(
+         void *                        instance,
+         REQUEST *                     request,
+         time_t *                      invalid_untilp )
+{
+   uint8_t                 cache_key_buff[MAX_STRING_LEN];
+   VALUE_PAIR *            vp;
+   rlm_totp_code_t *       inst;
+   totp_cache_entry_t      cache_key;
+   totp_cache_entry_t *    result;
+
+   rad_assert(instance        != NULL);
+   rad_assert(request         != NULL);
+   rad_assert(invalid_untilp  != NULL);
+
+   inst = instance;
+   *invalid_untilp = 0;
+
+   // configure cache key
+   memset(&cache_key, 0,      sizeof(cache_key));
+   memset(cache_key_buff, 0,  sizeof(cache_key_buff));
+   cache_key.key = cache_key_buff;
+   if ((vp = totp_cache_entry_key(instance, request)) == NULL)
+      return(-1);
+   if (vp->length >= sizeof(cache_key_buff))
+      return(-1);
+   memcpy(cache_key_buff, vp->data.octets, vp->length);
+   cache_key.keylen = vp->length;
+
+   // lookup cache entry
+   pthread_mutex_lock(inst->mutex);
+   result = rbtree_finddata(inst->cache_tree, &cache_key);
+   if (result != NULL)
+      *invalid_untilp = result->entry_expires;
+   pthread_mutex_unlock(inst->mutex);
+
+   return( (*invalid_untilp == -1) ? -1 : 0 );
 }
 
 
