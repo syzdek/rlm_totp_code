@@ -117,10 +117,10 @@
 // MARK: - Data Types
 
 
-typedef struct rlm_totp_code_t   rlm_totp_code_t;
-typedef struct _totp_algorithm   totp_algo_t;
-typedef struct _totp_used        totp_used_t;
-typedef struct _totp_params      totp_params_t;
+typedef struct rlm_totp_code_t      rlm_totp_code_t;
+typedef struct _totp_algorithm      totp_algo_t;
+typedef struct _totp_used           totp_used_t;
+typedef struct _totp_params         totp_params_t;
 
 
 // modules's structure for the configuration variables
