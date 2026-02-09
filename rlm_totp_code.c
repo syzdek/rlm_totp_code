@@ -316,7 +316,7 @@ totp_cache_entry_cmp(
 
 
 static void
-totp_used_free(
+totp_cache_entry_free(
          void *                        ptr );
 
 
@@ -598,7 +598,7 @@ mod_instantiate(
    inst->used_tree = NULL;
    inst->used_list = NULL;
    if (!(inst->allow_reuse))
-   {  inst->used_tree = rbtree_create(instance, totp_cache_entry_cmp, totp_used_free, 0);
+   {  inst->used_tree = rbtree_create(instance, totp_cache_entry_cmp, totp_cache_entry_free, 0);
       if (inst->used_tree == NULL)
          return(-1);
       inst->used_list = talloc_size(instance, sizeof(totp_cache_entry_t));
@@ -1210,7 +1210,7 @@ totp_cache_entry_cmp(
 
 
 void
-totp_used_free(
+totp_cache_entry_free(
          void *                        ptr )
 {
    totp_cache_entry_t *        entry;
