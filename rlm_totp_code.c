@@ -290,7 +290,7 @@ totp_cache_update(
 //----------------------//
 // algorithm prototypes //
 //----------------------//
-// MARK: cache prototypes
+// MARK: algorithm prototypes
 
 static int
 totp_algo_algorithm_id(
