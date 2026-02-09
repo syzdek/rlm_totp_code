@@ -303,7 +303,7 @@ totp_cache_update(
 // MARK: cache prototypes
 
 static int
-totp_calculate(
+totp_algo_calculate(
          totp_params_t *               params );
 
 
@@ -1043,7 +1043,7 @@ totp_cache_update(
 // MARK: algorithm functions
 
 int
-totp_calculate(
+totp_algo_calculate(
          totp_params_t *               params )
 {
    uint8_t        data[8];
@@ -1516,7 +1516,7 @@ totp_xlat_code(
    params.key     = key;
    params.key_len = key_len;
 
-   code = totp_calculate(&params);
+   code = totp_algo_calculate(&params);
    if ((inst->devel_debug))
    {  RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algorithm_name((int)params.totp_algo));
       RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params.totp_cur_unix);
