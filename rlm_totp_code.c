@@ -276,6 +276,13 @@ totp_cache_entry_unlink(
 
 
 static int
+totp_cache_update(
+         void *                        instance,
+         REQUEST *                     request,
+         totp_params_t *               params );
+
+
+static int
 totp_calculate(
          totp_params_t *               params );
 
@@ -329,13 +336,6 @@ totp_set_params_signed(
          REQUEST *                     request,
          const DICT_ATTR *             da,
          int64_t *                     intp );
-
-
-static int
-totp_cache_update(
-         void *                        instance,
-         REQUEST *                     request,
-         totp_params_t *               params );
 
 
 static ssize_t
@@ -928,6 +928,71 @@ totp_cache_entry_unlink(
 
 
 int
+totp_cache_update(
+         void *                        instance,
+         REQUEST *                     request,
+         totp_params_t *               params )
+{
+   rlm_totp_code_t *       inst;
+   totp_cache_entry_t *    entry;
+   totp_cache_entry_t *    result;
+   VALUE_PAIR *            vp;
+   uint64_t                expires;
+
+   rad_assert(instance != NULL);
+   rad_assert(request  != NULL);
+
+   inst = instance;
+
+   expires  = params->totp_cur_unix - params->totp_t0 + params->totp_time_offset;
+   expires /= params->totp_x;
+   expires--;
+   expires *= params->totp_x;
+
+   pthread_mutex_lock(inst->mutex);
+
+   totp_cache_cleanup(instance, (time_t)expires);
+
+   vp = totp_cache_entry_key(instance, request);
+   if (vp == NULL)
+   {  pthread_mutex_unlock(inst->mutex);
+      return(-1);
+   };
+
+   entry = totp_cache_entry_alloc(instance, vp->data.octets, vp->length, 0);
+   if (entry == NULL)
+   {  REDEBUG2("unable to allocate memory for totp_cache_entry_t");
+      pthread_mutex_unlock(inst->mutex);
+      return(-1);
+   };
+   entry->entry_expires = expires + params->totp_x - 1;
+
+   // update existing entry or add new entry
+   result = rbtree_finddata(inst->cache_tree, entry);
+   if (result != NULL)
+   {  totp_cache_entry_unlink(result);
+      result->entry_expires = entry->entry_expires;
+      talloc_free(entry);
+      entry = result;
+   } else
+   {  rbtree_insert(inst->cache_tree, entry);
+   };
+
+   // add entry to linked list
+   if (inst->cache_list->prev != NULL)
+   {  inst->cache_list->prev->next  = entry;
+      entry->prev                   = inst->cache_list->prev;
+   };
+   entry->next                      = inst->cache_list;
+   inst->cache_list->prev           = entry;
+
+   pthread_mutex_unlock(inst->mutex);
+
+   return(0);
+}
+
+
+int
 totp_calculate(
          totp_params_t *               params )
 {
@@ -1262,71 +1327,6 @@ totp_set_params_signed(
       default:
          return(-1);
    };
-
-   return(0);
-}
-
-
-int
-totp_cache_update(
-         void *                        instance,
-         REQUEST *                     request,
-         totp_params_t *               params )
-{
-   rlm_totp_code_t *       inst;
-   totp_cache_entry_t *    entry;
-   totp_cache_entry_t *    result;
-   VALUE_PAIR *            vp;
-   uint64_t                expires;
-
-   rad_assert(instance != NULL);
-   rad_assert(request  != NULL);
-
-   inst = instance;
-
-   expires  = params->totp_cur_unix - params->totp_t0 + params->totp_time_offset;
-   expires /= params->totp_x;
-   expires--;
-   expires *= params->totp_x;
-
-   pthread_mutex_lock(inst->mutex);
-
-   totp_cache_cleanup(instance, (time_t)expires);
-
-   vp = totp_cache_entry_key(instance, request);
-   if (vp == NULL)
-   {  pthread_mutex_unlock(inst->mutex);
-      return(-1);
-   };
-
-   entry = totp_cache_entry_alloc(instance, vp->data.octets, vp->length, 0);
-   if (entry == NULL)
-   {  REDEBUG2("unable to allocate memory for totp_cache_entry_t");
-      pthread_mutex_unlock(inst->mutex);
-      return(-1);
-   };
-   entry->entry_expires = expires + params->totp_x - 1;
-
-   // update existing entry or add new entry
-   result = rbtree_finddata(inst->cache_tree, entry);
-   if (result != NULL)
-   {  totp_cache_entry_unlink(result);
-      result->entry_expires = entry->entry_expires;
-      talloc_free(entry);
-      entry = result;
-   } else
-   {  rbtree_insert(inst->cache_tree, entry);
-   };
-
-   // add entry to linked list
-   if (inst->cache_list->prev != NULL)
-   {  inst->cache_list->prev->next  = entry;
-      entry->prev                   = inst->cache_list->prev;
-   };
-   entry->next                      = inst->cache_list;
-   inst->cache_list->prev           = entry;
-
-   pthread_mutex_unlock(inst->mutex);
 
    return(0);
 }
