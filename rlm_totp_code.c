@@ -148,7 +148,7 @@ struct rlm_totp_code_t
    bool              devel_debug;            //!< enable extra debug messages for developer
    int               totp_algo;              //!< HMAC cryptographic algorithm
    rbtree_t *        used_tree;
-   fr_dlist_t        used_list;
+   totp_used_t *     used_list;
 #ifdef HAVE_PTHREAD_H
    pthread_mutex_t * mutex;
 #endif // HAVE_PTHREAD_H
@@ -571,11 +571,18 @@ mod_instantiate(
    };
 
    // initialize cache and list
+   inst->used_tree = NULL;
+   inst->used_list = NULL;
    if (!(inst->allow_reuse))
    {  inst->used_tree = rbtree_create(instance, totp_used_cmp, totp_used_free, 0);
       if (inst->used_tree == NULL)
          return(-1);
-      fr_dlist_entry_init(&inst->used_list);
+      inst->used_list = talloc_size(instance, sizeof(totp_used_t));
+      if (inst->used_list == NULL)
+      { rbtree_free(inst->used_tree);
+         return(-1);
+      };
+      memset(inst->used_list, 0, sizeof(totp_used_t));
    };
 
    return(0);
