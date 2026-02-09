@@ -1302,7 +1302,7 @@ totp_cache_update(
 
    entry = totp_cache_entry_alloc(instance, vp->data.octets, vp->length, 0);
    if (entry == NULL)
-   {  REDEBUG2("unable to allocate memory for totp_used_t");
+   {  REDEBUG2("unable to allocate memory for totp_cache_entry_t");
       pthread_mutex_unlock(inst->mutex);
       return(-1);
    };
