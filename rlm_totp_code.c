@@ -220,11 +220,6 @@ mod_post_auth(
          CC_HINT(nonnull);
 
 
-static const char *
-totp_algorithm_name(
-         int                           algo_id );
-
-
 //-------------------//
 // base32 prototypes //
 //-------------------//
@@ -300,6 +295,11 @@ totp_cache_update(
 static int
 totp_algo_algorithm_id(
          const char *                  algo_name );
+
+
+static const char *
+totp_algo_algorithm_name(
+         int                           algo_id );
 
 
 static int
@@ -653,18 +653,6 @@ mod_post_auth(
          REQUEST *                     request)
 {
    return(RLM_MODULE_NOOP);
-}
-
-
-const char *
-totp_algorithm_name(
-         int                           algo_id )
-{
-   int idx;
-   for(idx = 0; ((totp_algorithm_map[idx].name)); idx++)
-      if (totp_algorithm_map[idx].id == algo_id)
-         return(totp_algorithm_map[idx].name);
-   return("unknown");
 }
 
 
@@ -1039,6 +1027,18 @@ totp_algo_algorithm_id(
       if (!(strcasecmp(algo_name, totp_algorithm_map[idx].name)))
          return(totp_algorithm_map[idx].id);
    return(-1);
+}
+
+
+const char *
+totp_algo_algorithm_name(
+         int                           algo_id )
+{
+   int idx;
+   for(idx = 0; ((totp_algorithm_map[idx].name)); idx++)
+      if (totp_algorithm_map[idx].id == algo_id)
+         return(totp_algorithm_map[idx].name);
+   return("unknown");
 }
 
 
@@ -1518,7 +1518,7 @@ totp_xlat_code(
 
    code = totp_algo_calculate(&params);
    if ((inst->devel_debug))
-   {  RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algorithm_name((int)params.totp_algo));
+   {  RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algo_algorithm_name((int)params.totp_algo));
       RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params.totp_cur_unix);
       RDEBUG("rlm_totp_code: totp_time_offset:  %i\n",  (int)params.totp_time_offset);
       RDEBUG("rlm_totp_code: inst->totp_t0:     %u\n",  (unsigned)params.totp_t0);
