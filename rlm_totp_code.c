@@ -320,6 +320,12 @@ totp_used_free(
          void *                        ptr );
 
 
+static VALUE_PAIR *
+totp_used_key(
+         void *                        instance,
+         REQUEST *                     request );
+
+
 static void
 totp_used_unlink(
          totp_used_t *                 entry );
@@ -1214,6 +1220,28 @@ totp_used_free(
    free(entry);
 
    return;
+}
+
+
+VALUE_PAIR *
+totp_used_key(
+         void *                        instance,
+         REQUEST *                     request )
+{
+   rlm_totp_code_t *       inst;
+   VALUE_PAIR *            vp;
+
+   rad_assert(instance != NULL);
+
+   inst = instance;
+
+   vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REQUEST);
+   if (vp == NULL)
+      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_CONTROL);
+   if (vp == NULL)
+      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REPLY);
+
+   return(vp);
 }
 
 
