@@ -319,7 +319,7 @@ totp_algo_hmac(
 
 
 static int
-totp_set_params(
+totp_algo_params_set(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params );
@@ -1152,7 +1152,7 @@ totp_algo_hmac(
 
 
 int
-totp_set_params(
+totp_algo_params_set(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params )
@@ -1422,7 +1422,7 @@ totp_xlat_code(
    key_len  = 0;
 
    // determine TOTP parameters
-   if ((rc = totp_set_params(instance, request, &params)) != 0)
+   if ((rc = totp_algo_params_set(instance, request, &params)) != 0)
    {  *out = '\0';
       return(-1);
    };
