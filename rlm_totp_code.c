@@ -304,7 +304,7 @@ totp_cache_entry_alloc(
 
 
 static void
-totp_used_cleanup(
+totp_cache_cleanup(
          void *                        instance,
          time_t                        t );
 
@@ -1166,7 +1166,7 @@ totp_cache_entry_alloc(
 
 
 void
-totp_used_cleanup(
+totp_cache_cleanup(
          void *                        instance,
          time_t                        t )
 {
@@ -1292,7 +1292,7 @@ totp_used_update(
 
    pthread_mutex_lock(inst->mutex);
 
-   totp_used_cleanup(instance, (time_t)expires);
+   totp_cache_cleanup(instance, (time_t)expires);
 
    vp = totp_used_key(instance, request);
    if (vp == NULL)
