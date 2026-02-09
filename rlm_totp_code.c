@@ -308,7 +308,7 @@ totp_algo_calculate(
 
 
 static void
-totp_hmac(
+totp_algo_hmac(
          UNUSED int                    totp_algo,
          uint8_t *                     digest,
          unsigned *                    digest_lenp,
@@ -1076,7 +1076,7 @@ totp_algo_calculate(
    data[7]  =  params->totp_t        & 0xff;
 
    // calculate HMAC digest
-   totp_hmac((int)params->totp_algo, digest, &digest_len, data, sizeof(data), params->key, params->key_len);
+   totp_algo_hmac((int)params->totp_algo, digest, &digest_len, data, sizeof(data), params->key, params->key_len);
    if (digest_len == 0)
       return(-1);
 
@@ -1100,7 +1100,7 @@ totp_algo_calculate(
 
 
 void
-totp_hmac(
+totp_algo_hmac(
          UNUSED int                    totp_algo,
          uint8_t *                     digest,
          unsigned *                    digest_lenp,
