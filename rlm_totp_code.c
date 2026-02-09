@@ -239,6 +239,14 @@ totp_base32_verify(
          size_t                        srclen );
 
 
+static totp_cache_entry_t *
+totp_cache_entry_alloc(
+         void *                        ctx,
+         const uint8_t *               key,
+         size_t                        key_len,
+         time_t                        expires );
+
+
 static int
 totp_calculate(
          totp_params_t *               params );
@@ -293,14 +301,6 @@ totp_set_params_signed(
          REQUEST *                     request,
          const DICT_ATTR *             da,
          int64_t *                     intp );
-
-
-static totp_cache_entry_t *
-totp_cache_entry_alloc(
-         void *                        ctx,
-         const uint8_t *               key,
-         size_t                        key_len,
-         time_t                        expires );
 
 
 static void
@@ -794,6 +794,36 @@ totp_base32_verify(
 }
 
 
+totp_cache_entry_t *
+totp_cache_entry_alloc(
+         void *                        ctx,
+         const uint8_t *               key,
+         size_t                        key_len,
+         time_t                        expires )
+{
+   totp_cache_entry_t *    entry;
+
+   rad_assert(key != NULL);
+   rad_assert(key_len > 0);
+
+   if ((entry = talloc_size(ctx, sizeof(totp_cache_entry_t))) == NULL)
+      return(NULL);
+   memset(entry, 0, sizeof(totp_cache_entry_t));
+
+   if ((entry->key = talloc_size(entry, (key_len+1))) == NULL)
+   {  talloc_free(entry);
+      return(NULL);
+   };
+   memcpy(entry->key, key, key_len);
+
+   entry->key[key_len]  = '\0';
+   entry->keylen        = key_len;
+   entry->entry_expires = expires;
+
+   return(entry);
+}
+
+
 int
 totp_calculate(
          totp_params_t *               params )
@@ -1131,36 +1161,6 @@ totp_set_params_signed(
    };
 
    return(0);
-}
-
-
-totp_cache_entry_t *
-totp_cache_entry_alloc(
-         void *                        ctx,
-         const uint8_t *               key,
-         size_t                        key_len,
-         time_t                        expires )
-{
-   totp_cache_entry_t *    entry;
-
-   rad_assert(key != NULL);
-   rad_assert(key_len > 0);
-
-   if ((entry = talloc_size(ctx, sizeof(totp_cache_entry_t))) == NULL)
-      return(NULL);
-   memset(entry, 0, sizeof(totp_cache_entry_t));
-
-   if ((entry->key = talloc_size(entry, (key_len+1))) == NULL)
-   {  talloc_free(entry);
-      return(NULL);
-   };
-   memcpy(entry->key, key, key_len);
-
-   entry->key[key_len]  = '\0';
-   entry->keylen        = key_len;
-   entry->entry_expires = expires;
-
-   return(entry);
 }
 
 
