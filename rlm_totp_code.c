@@ -147,7 +147,7 @@ struct rlm_totp_code_t
    bool                    allow_reuse;            //!< allow TOTP codes to be re-used
    bool                    devel_debug;            //!< enable extra debug messages for developer
    int                     totp_algo;              //!< HMAC cryptographic algorithm
-   rbtree_t *              used_tree;
+   rbtree_t *              cache_tree;
    totp_cache_entry_t *    used_list;
 #ifdef HAVE_PTHREAD_H
    pthread_mutex_t *       mutex;
@@ -479,9 +479,9 @@ mod_detach(
    };
 #endif // HAVE_PTHREAD_H
 
-   if (inst->used_tree != NULL)
-      rbtree_free(inst->used_tree);
-   inst->used_tree = NULL;
+   if (inst->cache_tree != NULL)
+      rbtree_free(inst->cache_tree);
+   inst->cache_tree = NULL;
 
    return(0);
 }
@@ -500,7 +500,7 @@ mod_instantiate(
 
    inst                    = instance;
    inst->mutex             = NULL;
-   inst->used_tree   = NULL;
+   inst->cache_tree   = NULL;
 
    // initialize mutex lock
    inst->mutex = NULL;
@@ -595,15 +595,15 @@ mod_instantiate(
    };
 
    // initialize cache and list
-   inst->used_tree = NULL;
+   inst->cache_tree = NULL;
    inst->used_list = NULL;
    if (!(inst->allow_reuse))
-   {  inst->used_tree = rbtree_create(instance, totp_cache_entry_cmp, totp_cache_entry_free, 0);
-      if (inst->used_tree == NULL)
+   {  inst->cache_tree = rbtree_create(instance, totp_cache_entry_cmp, totp_cache_entry_free, 0);
+      if (inst->cache_tree == NULL)
          return(-1);
       inst->used_list = talloc_size(instance, sizeof(totp_cache_entry_t));
       if (inst->used_list == NULL)
-      { rbtree_free(inst->used_tree);
+      { rbtree_free(inst->cache_tree);
          return(-1);
       };
       memset(inst->used_list, 0, sizeof(totp_cache_entry_t));
@@ -1179,7 +1179,7 @@ totp_cache_cleanup(
    root  = inst->used_list;
 
    while( (root->next != NULL) && (root->entry_expires < t) )
-      rbtree_deletebydata(inst->used_tree, root->next);
+      rbtree_deletebydata(inst->cache_tree, root->next);
 
    return;
 }
@@ -1309,14 +1309,14 @@ totp_cache_update(
    entry->entry_expires = expires + params->totp_x - 1;
 
    // update existing entry or add new entry
-   result = rbtree_finddata(inst->used_tree, entry);
+   result = rbtree_finddata(inst->cache_tree, entry);
    if (result != NULL)
    {  totp_cache_entry_unlink(result);
       result->entry_expires = entry->entry_expires;
       talloc_free(entry);
       entry = result;
    } else
-   {  rbtree_insert(inst->used_tree, entry);
+   {  rbtree_insert(inst->cache_tree, entry);
    };
 
    // add entry to linked list
