@@ -1479,6 +1479,8 @@ totp_xlat_code(
    VALUE_PAIR *            vp;
 	rlm_totp_code_t *       inst;
    totp_params_t           params;
+   time_t                  invalid_until;
+   time_t                  now;
 
    rad_assert(instance != NULL);
    rad_assert(request  != NULL);
@@ -1493,6 +1495,16 @@ totp_xlat_code(
    if ((rc = totp_algo_params_set(instance, request, &params)) != 0)
    {  *out = '\0';
       return(-1);
+   };
+
+   if (inst->allow_reuse == false)
+   {  totp_cache_query(instance, request, &invalid_until);
+      now = params.totp_cur_unix + params.totp_cur_unix;
+      if ( (now > invalid_until) && (invalid_until != 0) )
+      {  REDEBUG("TOTP code has already been utilized");
+         *out = '\0';
+         return(-1);
+      };
    };
 
    // skip leading white space
