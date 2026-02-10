@@ -939,11 +939,15 @@ totp_cache_entry_key(
    if (vp == NULL)
       vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REPLY);
    if (vp == NULL)
+   {  REDEBUG("%s is not set, unable to determine TOTP cache key", inst->vsa_cache_key_name);
       return(-1);
+   };
 
    // check value-pair used as cache key
    if (vp->length >= key_buff_len)
+   {  REDEBUG("value of %s exceeds allowed length, unable to determine TOTP cache key", inst->vsa_cache_key_name);
       return(-1);
+   };
 
    // configure cache key
    memset(cache_key, 0,       sizeof(totp_cache_entry_t));
