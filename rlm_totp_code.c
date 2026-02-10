@@ -129,7 +129,7 @@ struct rlm_totp_code_t
    const char *            totp_algo_str;          //!< name of HMAC cryptographic algorithm
    const char *            vsa_cache_key_name;     //!< name of VSA to use as the cache key
    const char *            vsa_time_offset_name;   //!< name of VSA which overrides totp_time_offset
-   const char *            vsa_unix_time_name;     //!< name of VSA which overrides totp_t0
+   const char *            vsa_start_time_name;    //!< name of VSA which overrides totp_t0
    const char *            vsa_time_step_name;     //!< name of VSA which overrides totp_x
    const char *            vsa_otp_length_name;    //!< name of VSA which overrides otp_length
    const char *            vsa_algorithm_name;     //!< name of VSA which overrides totp_algo
@@ -396,7 +396,7 @@ totp_xlat_code(
 
 // Map configuration file names to internal variables
 static const CONF_PARSER module_config[] =
-{  {  "unix_time",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),                "0" },
+{  {  "start_time",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),                "0" },
    {  "time_step",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_x),                 "30" },
    {  "time_offset",       FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_offset),       "0" },
    {  "otp_length",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, otp_length),             "6" },
@@ -406,7 +406,7 @@ static const CONF_PARSER module_config[] =
    {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),          "sha1" },
    {  "vsa_cache_key",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_cache_key_name),     "User-Name" },
    {  "vsa_time_offset",   FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_time_offset_name),   "TOTP-Time-Offset" },
-   {  "vsa_unix_time",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_unix_time_name),     NULL },
+   {  "vsa_start_time",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_start_time_name),    NULL },
    {  "vsa_time_step",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_time_step_name),     NULL },
    {  "vsa_otp_length",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_otp_length_name),    NULL },
    {  "vsa_algorithm",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_algorithm_name),     NULL },
@@ -589,7 +589,7 @@ mod_instantiate(
    };
 
    // lookup and verify VSA specified by config option vsa_unix_time
-   if ((vsa_name = inst->vsa_unix_time_name) != NULL)
+   if ((vsa_name = inst->vsa_start_time_name) != NULL)
    {  if ((inst->vsa_unix_time = dict_attrbyname(vsa_name)) == NULL)
       {  ERROR("'%s' not found in dictionary", vsa_name);
          return(-1);

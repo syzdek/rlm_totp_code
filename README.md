@@ -61,7 +61,7 @@ Where
 Module Configuration
 --------------------
 
-   * ___unix_time___ - specifies the UNIX time to start counting time steps.
+   * ___start_time___ - specifies the UNIX time to start counting time steps.
      This is the value of  "_T0_" in RFC6238. Some implementations only
      support a value of "_0_". The default is "_0_".
 
@@ -101,10 +101,10 @@ Module Configuration
      enabled.  The specified VSA must have a type of integer or unsigned.  The
      default is "_TOTP-Time-Offset_".
 
-   * ___vsa_unix_time___ - the RADIUS vendor specific attribute which
-     overrides the configured ___unix_time___ if ___allow_override___ is
+   * ___vsa_start_time___ - the RADIUS vendor specific attribute which
+     overrides the configured ___start_time___ if ___allow_override___ is
      enabled.  The specified VSA must have a type of integer or unsigned.
-     If this option is not configured, then ___unix_time___ cannot be
+     If this option is not configured, then ___start_time___ cannot be
      overridden by a request.
 
    * ___vsa_time_step___ - the RADIUS vendor specific attribute which
@@ -127,7 +127,7 @@ Module Configuration
 The following is a example configuration which uses the default values:
 
       totp_code {
-         unix_time         = 0
+         start_time        = 0
          time_step         = 30
          algorithm         = "sha1"
          time_offset       = 0
