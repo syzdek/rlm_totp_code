@@ -1048,7 +1048,6 @@ totp_cache_update(
    if (rc == -1)
       return(-1);
 
-
    pthread_mutex_lock(inst->mutex);
 
    // clean up stale entries from cache
