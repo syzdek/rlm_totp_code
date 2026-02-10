@@ -2,7 +2,7 @@
 TOTP Code Module for FreeRADIUS
 ===============================
 
-FreeRADIUS TOTP Code Module  
+TOTP Code Module for FreeRADIUS  
 Copyright (C) 2026 David M. Syzdek <david@syzdek.net>.  
 All rights reserved.  
 
