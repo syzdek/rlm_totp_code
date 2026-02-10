@@ -1512,7 +1512,7 @@ totp_xlat_code(
    {  totp_cache_query(instance, request, &invalid_until);
       now = params.totp_cur_unix + params.totp_time_offset;
       if ( (now < invalid_until) && (invalid_until != 0) )
-      {  REDEBUG("TOTP code has already been utilized");
+      {  RDEBUG2("TOTP code has been utilized. Next TOTP code will be available in %us", (unsigned)(invalid_until-now));
          *out = '\0';
          return(-1);
       };
