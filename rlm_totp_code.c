@@ -173,9 +173,9 @@ struct _totp_cache_entry
 struct _totp_params
 {  uint64_t                totp_t0;          //!< Unix time to start counting time steps
    uint64_t                totp_x;           //!< time step in seconds
-   uint64_t                totp_cur_unix;    //!< current Unix time
+   uint64_t                totp_time;        //!< current Unix time
    uint64_t                totp_t;           //!< number of time steps since t0
-   int64_t                 totp_time_offset; //!< amount of seconds to adjust .totp_cur_unix
+   int64_t                 totp_time_offset; //!< amount of seconds to adjust .totp_time
    uint64_t                totp_algo;        //!< HMAC algorithm
    uint64_t                otp_length;       //!< requested length of One-Time-Password
    size_t                  key_len;          //!< length of HMAC key
@@ -1051,11 +1051,11 @@ totp_cache_update(
    pthread_mutex_lock(inst->mutex);
 
    // clean up stale entries from cache
-   time_cleanup  = params->totp_cur_unix + params->totp_time_offset;
+   time_cleanup  = params->totp_time + params->totp_time_offset;
    totp_cache_cleanup(instance, (time_t)time_cleanup);
 
    // calculates when cached entry should expire
-   invalid_until  = params->totp_cur_unix - params->totp_t0 + params->totp_time_offset;
+   invalid_until  = params->totp_time - params->totp_t0 + params->totp_time_offset;
    invalid_until += params->totp_x - (invalid_until % params->totp_x);
 
    // attempt to update existing entry
@@ -1136,11 +1136,11 @@ totp_algo_calculate(
 
    rad_assert(params != NULL);
 
-   if (params->totp_t0 > (params->totp_cur_unix + params->totp_time_offset))
+   if (params->totp_t0 > (params->totp_time + params->totp_time_offset))
       return(-1);
 
    // calculate interval count
-   params->totp_t     = params->totp_cur_unix - params->totp_t0;
+   params->totp_t     = params->totp_time - params->totp_t0;
    params->totp_t    += params->totp_time_offset;
    params->totp_t    /= params->totp_x;
 
@@ -1250,7 +1250,7 @@ totp_algo_params_set(
    memset(params, 0, sizeof(totp_params_t));
    params->totp_t0            = inst->totp_t0;
    params->totp_x             = inst->totp_x;
-   params->totp_cur_unix      = time(NULL);
+   params->totp_time          = time(NULL);
    params->totp_time_offset   = inst->totp_time_offset;
    params->totp_algo          = inst->totp_algo;
    params->otp_length         = inst->otp_length;
@@ -1510,7 +1510,7 @@ totp_xlat_code(
 
    if (inst->allow_reuse == false)
    {  totp_cache_query(instance, request, &invalid_until);
-      now = params.totp_cur_unix + params.totp_time_offset;
+      now = params.totp_time + params.totp_time_offset;
       if ( (now < invalid_until) && (invalid_until != 0) )
       {  RDEBUG2("TOTP code has been utilized. Next TOTP code will be available in %us", (unsigned)(invalid_until-now));
          *out = '\0';
@@ -1610,7 +1610,7 @@ totp_xlat_code(
    code = totp_algo_calculate(&params);
    if ((inst->devel_debug))
    {  RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algo_algorithm_name((int)params.totp_algo));
-      RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params.totp_cur_unix);
+      RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params.totp_time);
       RDEBUG("rlm_totp_code: totp_time_offset:  %i\n",  (int)params.totp_time_offset);
       RDEBUG("rlm_totp_code: inst->totp_t0:     %u\n",  (unsigned)params.totp_t0);
       RDEBUG("rlm_totp_code: inst->totp_x:      %u\n",  (unsigned)params.totp_x);
