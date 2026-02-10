@@ -148,7 +148,7 @@ The following is an example of a server using TOTP and MS-CHAP:
       server totp-mschap {
          authorize {
             # reject non-mschap authentication types
-            if (control:Auth-Type == "mschap") {
+            if (control:Auth-Type != "mschap") {
                reject
             }
             
@@ -178,6 +178,16 @@ The following is an example of a server using TOTP and MS-CHAP:
             }
             Auth-Type MS-CHAP {
                mschap
+            }
+         }
+         post-auth {
+            # caches that the code was successfully verified in order to
+            # prevent the same code from being used again at a later time.
+            Auth-Type CHAP {
+                totp-code
+            }
+            Auth-Type MS-CHAP {
+               totp_code
             }
          }
       }
