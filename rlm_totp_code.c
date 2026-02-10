@@ -662,6 +662,18 @@ mod_post_auth(
          void *                        instance,
          REQUEST *                     request)
 {
+   totp_params_t        params;
+
+   rad_assert(instance  != NULL);
+   rad_assert(request   != NULL);
+
+   // determine TOTP parameters
+   if ( totp_algo_params_set(instance, request, &params) != 0)
+      return(RLM_MODULE_NOOP);
+
+   // update cache
+   totp_cache_update(instance, request, &params);
+
    return(RLM_MODULE_NOOP);
 }
 
