@@ -895,8 +895,8 @@ totp_cache_entry_cmp(
    const totp_cache_entry_t * entry_a;
    const totp_cache_entry_t * entry_b;
 
-   entry_a  = *((const void * const *)ptr_a);
-   entry_b  = *((const void * const *)ptr_b);
+   entry_a  = (const totp_cache_entry_t *)ptr_a;
+   entry_b  = (const totp_cache_entry_t *)ptr_b;
    keylen   = (entry_a->keylen < entry_b->keylen)
             ?  entry_a->keylen
             :  entry_b->keylen;
