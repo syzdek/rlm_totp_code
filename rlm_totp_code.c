@@ -318,6 +318,13 @@ totp_algo_calculate(
 
 
 static void
+totp_algo_debug(
+         void *                        instance,
+         REQUEST *                     request,
+         totp_params_t *               params );
+
+
+static void
 totp_algo_hmac(
          UNUSED int                    totp_algo,
          uint8_t *                     digest,
@@ -1179,6 +1186,37 @@ totp_algo_calculate(
 
 
 void
+totp_algo_debug(
+         void *                        instance,
+         REQUEST *                     request,
+         totp_params_t *               params )
+{
+	rlm_totp_code_t *       inst;
+
+   rad_assert(instance != NULL);
+   rad_assert(params   != NULL);
+
+   inst = instance;
+
+   if (!(inst->devel_debug))
+      return;
+
+   RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algo_algorithm_name((int)params->totp_algo));
+   RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params->totp_time);
+   RDEBUG("rlm_totp_code: totp_time_offset:  %i\n",  (int)params->totp_time_offset);
+   RDEBUG("rlm_totp_code: inst->totp_t0:     %u\n",  (unsigned)params->totp_t0);
+   RDEBUG("rlm_totp_code: inst->totp_x:      %u\n",  (unsigned)params->totp_x);
+   RDEBUG("rlm_totp_code: inst->totp_t:      %u\n",  (unsigned)params->totp_t);
+   RDEBUG("rlm_totp_code: key:               <binary>\n");
+   RDEBUG("rlm_totp_code: key_len:           %u\n",  (unsigned)params->key_len);
+   RDEBUG("rlm_totp_code: result:            %s\n",  params->otp);
+   RDEBUG("rlm_totp_code: result_len:        %u\n",  (unsigned)params->otp_length);
+
+   return;
+}
+
+
+void
 totp_algo_hmac(
          UNUSED int                    totp_algo,
          uint8_t *                     digest,
@@ -1608,18 +1646,7 @@ totp_xlat_code(
    params.key_len = key_len;
 
    code = totp_algo_calculate(&params);
-   if ((inst->devel_debug))
-   {  RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algo_algorithm_name((int)params.totp_algo));
-      RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params.totp_time);
-      RDEBUG("rlm_totp_code: totp_time_offset:  %i\n",  (int)params.totp_time_offset);
-      RDEBUG("rlm_totp_code: inst->totp_t0:     %u\n",  (unsigned)params.totp_t0);
-      RDEBUG("rlm_totp_code: inst->totp_x:      %u\n",  (unsigned)params.totp_x);
-      RDEBUG("rlm_totp_code: inst->totp_t:      %u\n",  (unsigned)params.totp_t);
-      RDEBUG("rlm_totp_code: key:               <binary>\n");
-      RDEBUG("rlm_totp_code: key_len:           %u\n",  (unsigned)params.key_len);
-      RDEBUG("rlm_totp_code: result:            %s\n",  params.otp);
-      RDEBUG("rlm_totp_code: result_len:        %u\n",  (unsigned)params.otp_length);
-   };
+   totp_algo_debug(instance, request, &params);
    if (code < 0)
    {  *out = '\0';
       return(-1);
