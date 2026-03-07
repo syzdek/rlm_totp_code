@@ -127,13 +127,13 @@ typedef struct _totp_params         totp_params_t;
 struct rlm_totp_code_t
 {  char const *            name;                   //!< name of this instance */
    const char *            totp_algo_str;          //!< name of HMAC cryptographic algorithm
-   const char *            vsa_cache_key_name;     //!< name of VSA to use as the cache key
+   const char *            vsa_cache_id_name;      //!< name of VSA to use as the cache key
    const char *            vsa_time_offset_name;   //!< name of VSA which overrides totp_time_offset
    const char *            vsa_start_time_name;    //!< name of VSA which overrides totp_t0
    const char *            vsa_time_step_name;     //!< name of VSA which overrides totp_x
    const char *            vsa_otp_length_name;    //!< name of VSA which overrides otp_length
    const char *            vsa_algorithm_name;     //!< name of VSA which overrides totp_algo
-   const DICT_ATTR *       vsa_cache_key;          //!< dictionary entry for VSA to use as the cache key
+   const DICT_ATTR *       vsa_cache_id;           //!< dictionary entry for VSA to use as the cache key
    const DICT_ATTR *       vsa_time_offset;        //!< dictionary entry for VSA which overrides totp_time_offset
    const DICT_ATTR *       vsa_unix_time;          //!< dictionary entry for VSA which overrides totp_t0
    const DICT_ATTR *       vsa_time_step;          //!< dictionary entry for VSA which overrides totp_x
@@ -404,7 +404,7 @@ static const CONF_PARSER module_config[] =
    {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),         "no" },
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),            "no" },
    {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),          "sha1" },
-   {  "vsa_cache_key",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_cache_key_name),     "User-Name" },
+   {  "vsa_cache_id",      FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_cache_id_name),      "User-Name" },
    {  "vsa_time_offset",   FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_time_offset_name),   "TOTP-Time-Offset" },
    {  "vsa_start_time",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_start_time_name),    NULL },
    {  "vsa_time_step",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_time_step_name),     NULL },
@@ -568,8 +568,8 @@ mod_instantiate(
    };
 
    // lookup and verify VSA specified by config option vsa_cache_key
-   if ((vsa_name = inst->vsa_cache_key_name) != NULL)
-   {  if ((inst->vsa_cache_key = dict_attrbyname(vsa_name)) == NULL)
+   if ((vsa_name = inst->vsa_cache_id_name) != NULL)
+   {  if ((inst->vsa_cache_id = dict_attrbyname(vsa_name)) == NULL)
       {  ERROR("'%s' not found in dictionary", vsa_name);
          return(-1);
       };
@@ -945,19 +945,19 @@ totp_cache_entry_key(
 
    inst = instance;
 
-   vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REQUEST);
+   vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_id, TOTP_SCOPE_REQUEST);
    if (vp == NULL)
-      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_CONTROL);
+      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_id, TOTP_SCOPE_CONTROL);
    if (vp == NULL)
-      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_key, TOTP_SCOPE_REPLY);
+      vp = totp_request_vp_by_dict(instance, request, inst->vsa_cache_id, TOTP_SCOPE_REPLY);
    if (vp == NULL)
-   {  REDEBUG("%s is not set, unable to determine TOTP cache key", inst->vsa_cache_key_name);
+   {  REDEBUG("%s is not set, unable to determine TOTP cache key", inst->vsa_cache_id_name);
       return(-1);
    };
 
    // check value-pair used as cache key
    if (vp->length >= key_buff_len)
-   {  REDEBUG("value of %s exceeds allowed length, unable to determine TOTP cache key", inst->vsa_cache_key_name);
+   {  REDEBUG("value of %s exceeds allowed length, unable to determine TOTP cache key", inst->vsa_cache_id_name);
       return(-1);
    };
 
