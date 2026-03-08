@@ -128,12 +128,18 @@ struct rlm_totp_code_t
 {  char const *            name;                   //!< name of this instance */
    const char *            totp_algo_str;          //!< name of HMAC cryptographic algorithm
    const char *            vsa_cache_id_name;      //!< name of VSA to use as the cache key
+   const char *            vsa_secret_name;        //!< name of VSA to use as the base32 encoded TOTP key
+   const char *            vsa_key_name;           //!< name of VSA to use as the binary TOTP key
+   const char *            vsa_pass_name;          //!< name of VSA to use as the TOTP password
    const char *            vsa_time_offset_name;   //!< name of VSA which overrides totp_time_offset
    const char *            vsa_start_time_name;    //!< name of VSA which overrides totp_t0
    const char *            vsa_time_step_name;     //!< name of VSA which overrides totp_x
    const char *            vsa_otp_length_name;    //!< name of VSA which overrides otp_length
    const char *            vsa_algorithm_name;     //!< name of VSA which overrides totp_algo
    const DICT_ATTR *       vsa_cache_id;           //!< dictionary entry for VSA to use as the cache key
+   const DICT_ATTR *       vsa_secret;             //!< dictionary entry for VSA to use as the base32 encoded TOTP key
+   const DICT_ATTR *       vsa_key;                //!< dictionary entry for VSA to use as the binary TOTP key
+   const DICT_ATTR *       vsa_pass;               //!< dictionary entry for VSA to use as the TOTP password
    const DICT_ATTR *       vsa_time_offset;        //!< dictionary entry for VSA which overrides totp_time_offset
    const DICT_ATTR *       vsa_unix_time;          //!< dictionary entry for VSA which overrides totp_t0
    const DICT_ATTR *       vsa_time_step;          //!< dictionary entry for VSA which overrides totp_x
@@ -195,6 +201,13 @@ struct _totp_params
 // module prototypes //
 //-------------------//
 // MARK: module prototypes
+
+static rlm_rcode_t
+mod_authenticate(
+         void *                        instance,
+         REQUEST *                     request)
+         CC_HINT(nonnull);
+
 
 static int
 mod_bootstrap(
@@ -413,6 +426,9 @@ static const CONF_PARSER module_config[] =
    {  "devel_debug",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, devel_debug),            "no" },
    {  "algorithm",         FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, totp_algo_str),          "sha1" },
    {  "vsa_cache_id",      FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_cache_id_name),      "User-Name" },
+   {  "vsa_secret",        FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_secret_name),        "TOTP-Secret" },
+   {  "vsa_key",           FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_key_name),           "TOTP-Key" },
+   {  "vsa_pass",          FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_pass_name),          "TOTP-Password" },
    {  "vsa_time_offset",   FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_time_offset_name),   "TOTP-Time-Offset" },
    {  "vsa_start_time",    FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_start_time_name),    NULL },
    {  "vsa_time_step",     FR_CONF_OFFSET(PW_TYPE_STRING,   rlm_totp_code_t, vsa_time_step_name),     NULL },
@@ -460,7 +476,8 @@ module_t rlm_totp_code =
    .bootstrap              = mod_bootstrap,
    .detach                 = mod_detach,
    .methods =
-   {  [MOD_POST_AUTH]      = mod_post_auth
+   {  [MOD_AUTHENTICATE]   = mod_authenticate,
+      [MOD_POST_AUTH]      = mod_post_auth
    },
 };
 
@@ -488,6 +505,87 @@ static totp_algo_t totp_algorithm_map[] =
 // module functions //
 //------------------//
 // MARK: module functions
+
+rlm_rcode_t
+mod_authenticate(
+         void *                        instance,
+         REQUEST *                     request)
+{
+   int                     rc;
+   int                     code;
+   size_t                  key_len;
+   uint8_t *               key;
+   VALUE_PAIR *            pass_vp;
+   VALUE_PAIR *            vp;
+	rlm_totp_code_t *       inst;
+   totp_params_t           params;
+   time_t                  invalid_until;
+   time_t                  now;
+
+   rad_assert(instance != NULL);
+   rad_assert(request  != NULL);
+
+   inst = instance;
+
+   key      = NULL;
+   key_len  = 0;
+
+   // determine TOTP parameters
+   if ((rc = totp_algo_params_set(instance, request, &params)) != 0)
+      return(RLM_MODULE_REJECT);
+
+   if (inst->allow_reuse == false)
+   {  totp_cache_query(instance, request, &invalid_until);
+      now = params.totp_time + params.totp_time_offset;
+      if ( (now < invalid_until) && (invalid_until != 0) )
+      {  RDEBUG2("TOTP code has been utilized. Next TOTP code will be available in %us", (unsigned)(invalid_until-now));
+         return(RLM_MODULE_REJECT);
+      };
+   };
+
+   // retrieve TOTP password
+   pass_vp = totp_request_vp_by_dict(instance, request, inst->vsa_pass, TOTP_SCOPE_REQUEST);
+   if (!(pass_vp))
+   {  if ((inst->devel_debug))
+         RDEBUG2("TOTP password is not set, skipping TOTP auth");
+      return(RLM_MODULE_NOOP);
+   };
+
+   // attempt to obtain TOTP key from attributes
+   if (inst->vsa_secret != NULL)
+   {  vp = totp_request_vp_by_dict(instance, request, inst->vsa_secret, TOTP_SCOPE_CONTROL);
+      if (vp != NULL)
+         totp_base32_decode(request, &key, &key_len, vp->data.strvalue, vp->length);
+   };
+   if ( (inst->vsa_key != NULL) && (key == NULL) )
+   {  vp = totp_request_vp_by_dict(instance, request, inst->vsa_key, TOTP_SCOPE_CONTROL);
+      if (vp != NULL)
+      {  key      = (unsigned char *)vp->data.octets;
+         key_len  = vp->length;
+      };
+   };
+   if (!(key))
+   {  RDEBUG2("TOTP secret is not set");
+      return(RLM_MODULE_REJECT);
+   };
+
+   params.key     = key;
+   params.key_len = key_len;
+
+   code = totp_algo_calculate(&params);
+   totp_algo_debug(instance, request, &params);
+   if (code < 0)
+      return(RLM_MODULE_REJECT);
+
+   // compare codes
+   if (params.otp_length == pass_vp->length)
+      if (!(memcmp(params.otp, pass_vp->data.octets, pass_vp->length)))
+         return(RLM_MODULE_OK);
+
+   return(RLM_MODULE_REJECT);
+}
+
+
 
 int
 mod_bootstrap(
@@ -578,6 +676,30 @@ mod_instantiate(
    // lookup and verify VSA specified by config option vsa_cache_key
    if ((vsa_name = inst->vsa_cache_id_name) != NULL)
    {  if ((inst->vsa_cache_id = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_secret
+   if ((vsa_name = inst->vsa_secret_name) != NULL)
+   {  if ((inst->vsa_secret = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_key
+   if ((vsa_name = inst->vsa_key_name) != NULL)
+   {  if ((inst->vsa_key = dict_attrbyname(vsa_name)) == NULL)
+      {  ERROR("'%s' not found in dictionary", vsa_name);
+         return(-1);
+      };
+   };
+
+   // lookup and verify VSA specified by config option vsa_pass
+   if ((vsa_name = inst->vsa_pass_name) != NULL)
+   {  if ((inst->vsa_pass = dict_attrbyname(vsa_name)) == NULL)
       {  ERROR("'%s' not found in dictionary", vsa_name);
          return(-1);
       };
