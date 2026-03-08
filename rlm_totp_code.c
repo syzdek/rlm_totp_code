@@ -305,7 +305,7 @@ totp_cache_query(
 
 
 static int
-totp_cache_update(
+totp_cache_set_expired(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params );
@@ -802,7 +802,7 @@ mod_post_auth(
       return(RLM_MODULE_NOOP);
 
    // update cache
-   totp_cache_update(instance, request, &params);
+   totp_cache_set_expired(instance, request, &params);
 
    return(RLM_MODULE_NOOP);
 }
@@ -1167,7 +1167,7 @@ totp_cache_query(
 
 
 int
-totp_cache_update(
+totp_cache_set_expired(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params )
