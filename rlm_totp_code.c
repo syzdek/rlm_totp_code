@@ -227,8 +227,9 @@ mod_post_auth(
 
 static ssize_t
 totp_base32_decode(
-         uint8_t *                     dst,
-         size_t                        dstlen,
+         const void *                  ctx,
+         uint8_t **                    dstp,
+         size_t *                      dstlenp,
          const char *                  src,
          size_t                        srclen );
 
@@ -692,26 +693,39 @@ mod_post_auth(
 
 ssize_t
 totp_base32_decode(
-         uint8_t *                     dst,
-         size_t                        dstlen,
+         const void *                  ctx,
+         uint8_t **                    dstp,
+         size_t *                      dstlenp,
          const char *                  src,
          size_t                        srclen )
 {
+   uint8_t *   dst;
+   size_t      dstlen;
    size_t      datlen;
    size_t      pos;
    ssize_t     rc;
 
-   rad_assert(dst != NULL);
-   rad_assert(src != NULL);
-   rad_assert(dstlen >  0);
+   rad_assert(ctx != NULL);
+   rad_assert(dstp != NULL);
+   rad_assert(dstlenp != NULL);
 
-   datlen = 0;
+   *dstp    = NULL;
+   *dstlenp = 0;
+
+   datlen   = 0;
 
    // verifies encoded data
    if ((rc = totp_base32_verify(src, srclen)) < 0)
       return(rc);
-   if ( (rc > (ssize_t)dstlen) && ((dst)) )
-      return(RLM_TOTP_CODE_EBUFSIZ);
+   dstlen = (size_t)(rc+1);
+
+   // allocate memory and decode secret
+   if ((dst = talloc_size(ctx, dstlen)) == NULL)
+   {  ERROR("totp_code: unable to allocate memory");
+      return(-1);
+   };
+   memset(dst, '\0', dstlen);
+   *dstp = dst;
 
    // decodes base32 encoded data
    datlen = 0;
@@ -730,7 +744,7 @@ totp_base32_decode(
          // byte 2
          case 2:
             if (src[pos] == '=')
-               return((ssize_t)datlen);
+               return((ssize_t)(*dstlenp = datlen));
             break;
 
          // byte 3
@@ -744,7 +758,7 @@ totp_base32_decode(
          // byte 4
          case 4:
             if (src[pos] == '=')
-               return((ssize_t)datlen);
+               return((ssize_t)(*dstlenp = datlen));
             dst[datlen]  = (base32_map[(uint8_t)src[pos-1]] << 4) & 0xF0; // 4 MSB
             dst[datlen] |= (base32_map[(uint8_t)src[pos-0]] >> 1) & 0x0F; // 4 LSB
             datlen++;
@@ -753,7 +767,7 @@ totp_base32_decode(
          // byte 5;
          case 5:
             if (src[pos] == '=')
-               return((ssize_t)datlen);
+               return((ssize_t)(*dstlenp = datlen));
             break;
 
          // byte 6
@@ -767,7 +781,7 @@ totp_base32_decode(
          // byte 7
          case 7:
             if (src[pos] == '=')
-               return((ssize_t)datlen);
+               return((ssize_t)(*dstlenp = datlen));
             dst[datlen]  = (base32_map[(uint8_t)src[pos-1]] << 5) & 0xE0; // 3 MSB
             dst[datlen] |= (base32_map[(uint8_t)src[pos-0]] >> 0) & 0x1F; // 5 LSB
             datlen++;
@@ -775,12 +789,12 @@ totp_base32_decode(
 
          default:
             if (src[pos] == '=')
-               return((ssize_t)datlen);
+               return((ssize_t)(*dstlenp = datlen));
             break;
       };
    };
 
-   return((ssize_t)datlen);
+   return((ssize_t)(*dstlenp = datlen));
 }
 
 
@@ -1521,7 +1535,7 @@ totp_xlat_code(
    int                     code;
    size_t                  pos;
    ssize_t                 base32_len;
-   ssize_t                 key_len;
+   size_t                  key_len;
    uint8_t *               key;
    const char *            base32;
    char                    attr_str[MAX_STRING_LEN];
@@ -1625,20 +1639,10 @@ totp_xlat_code(
 
    // decode base32 encoded string
    if (!(key))
-   {  // verify base32 encoding
-      if ((key_len = totp_base32_verify(base32, base32_len)) < 0)
-      {  REDEBUG("invalid base32 encoded data passed to totp_code xlat");
-         *out = '\0';
+   {  if (totp_base32_decode(request, &key, &key_len, base32, base32_len) < 0)
+      {  *out = '\0';
          return(-1);
       };
-
-      // allocate memory and decode secret
-      if ((key = talloc_size(request, key_len+1)) == NULL)
-      {  ERROR("totp_code: unable to allocate memory");
-         *out = '\0';
-         return(-1);
-      };
-      totp_base32_decode(key, key_len, base32, base32_len);
       key[key_len] = '\0';
    };
 
