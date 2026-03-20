@@ -180,8 +180,8 @@ struct _totp_params
 {  uint64_t                totp_t0;          //!< Unix time to start counting time steps
    uint64_t                totp_x;           //!< time step in seconds
    uint64_t                totp_time;        //!< current Unix time
-   uint64_t                totp_t;           //!< number of time steps since t0
    int64_t                 totp_time_offset; //!< amount of seconds to adjust .totp_time
+   uint64_t                totp_t;           //!< number of time steps since t0
    uint64_t                totp_algo;        //!< HMAC algorithm
    uint64_t                otp_length;       //!< requested length of One-Time-Password
    size_t                  key_len;          //!< length of HMAC key
