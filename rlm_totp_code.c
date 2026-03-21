@@ -631,11 +631,16 @@ mod_authenticate(
 
          // compare codes
          if (params.otp_length == pass_vp->length)
-            if (!(memcmp(params.otp, pass_vp->data.octets, pass_vp->length)))
+         {  if (!(memcmp(params.otp, pass_vp->data.octets, pass_vp->length)))
+            {  totp_cache_update(instance, request, &params, RLM_TOTP_CACHE_EXPIRED);
                return(RLM_MODULE_OK);
+            };
+         };
       };
       params.totp_t_drift++;
    };
+
+   totp_cache_update(instance, request, &params, RLM_TOTP_CACHE_FAILED);
 
    return(RLM_MODULE_REJECT);
 }
