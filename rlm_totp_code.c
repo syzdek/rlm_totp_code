@@ -185,17 +185,26 @@ struct _totp_cache_entry
 };
 
 
+// The TOTP algorithm can be represented as:
+//    T                 = (CurrentUnixTime - T0) / X
+//    TOTP              = Truncate(HMAC_Algorithm(K, T)) % 10^Digit
+//
+// or using struct members:
+//    CurrentUnixTime   = .totp_time + .totp_time_offset + .totp_time_drift
+//    T                 = (CurrentUnixTime - .totp_t0) / .totp_x
+//    AdjustedT         = T + .totp_t_drift
+//    TOTP              = Truncate(HMAC_Algorithm(.key, AdjustedT)) % 10^.otp_length
 struct _totp_params
-{  uint64_t                totp_t0;          //!< Unix time to start counting time steps
-   uint64_t                totp_x;           //!< time step in seconds
-   uint64_t                totp_time;        //!< current Unix time
+{  uint64_t                totp_t0;          //!< Unix time to start counting time steps [T0]
+   uint64_t                totp_x;           //!< time step in seconds [X]
+   uint64_t                totp_time;        //!< current Unix time [CurrentUnixTime]
    int64_t                 totp_time_offset; //!< amount of seconds to adjust .totp_time (set by config)
    int64_t                 totp_time_drift;  //!< amount of seconds to adjust .totp_time (used at runtime)
-   uint64_t                totp_t;           //!< number of time steps since t0
+   uint64_t                totp_t;           //!< number of time steps since t0 [T]
    uint64_t                totp_t_drift;     //!< number of time steps to adjust .totp_t (used at runtime)
    uint64_t                totp_algo;        //!< HMAC algorithm
-   uint64_t                otp_length;       //!< requested length of One-Time-Password
-   size_t                  key_len;          //!< length of HMAC key
+   uint64_t                otp_length;       //!< requested length of One-Time-Password [Digit]
+   size_t                  key_len;          //!< length of HMAC key [K]
    const uint8_t *         key;              //!< HAMC key
    char                    otp[16];
 };
