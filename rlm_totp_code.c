@@ -266,7 +266,7 @@ totp_base32_verify(
 static void
 totp_cache_cleanup(
          void *                        instance,
-         time_t                        t );
+         totp_params_t *               params );
 
 
 static totp_cache_entry_t *
@@ -1018,17 +1018,19 @@ totp_base32_verify(
 void
 totp_cache_cleanup(
          void *                        instance,
-         time_t                        t )
+         totp_params_t *               params )
 {
+   time_t                  time_cleanup;
    rlm_totp_code_t *       inst;
    totp_cache_entry_t *    root;
 
    rad_assert(instance != NULL);
 
-   inst  = instance;
-   root  = inst->cache_list;
+   inst           = instance;
+   root           = inst->cache_list;
+   time_cleanup   = (time_t)(params->totp_time + params->totp_time_offset);
 
-   while( (root->next != NULL) && (root->invalid_until < t) )
+   while( (root->next != NULL) && (root->invalid_until < time_cleanup) )
       rbtree_deletebydata(inst->cache_tree, root->next);
 
    return;
@@ -1214,7 +1216,6 @@ totp_cache_set_expired(
    rlm_totp_code_t *       inst;
    totp_cache_entry_t      cache_key;
    totp_cache_entry_t *    result;
-   uint64_t                time_cleanup;
    uint64_t                invalid_until;
 
    rad_assert(instance != NULL);
@@ -1231,8 +1232,7 @@ totp_cache_set_expired(
    pthread_mutex_lock(inst->mutex);
 
    // clean up stale entries from cache
-   time_cleanup  = params->totp_time + params->totp_time_offset;
-   totp_cache_cleanup(instance, (time_t)time_cleanup);
+   totp_cache_cleanup(instance, params);
 
    // calculates when cached entry should expire
    invalid_until  = params->totp_time - params->totp_t0 + params->totp_time_offset;
