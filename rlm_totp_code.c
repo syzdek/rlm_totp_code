@@ -1029,9 +1029,14 @@ totp_cache_cleanup(
    inst           = instance;
    root           = inst->cache_list;
    time_cleanup   = (time_t)(params->totp_time + params->totp_time_offset);
+   time_cleanup  -= (time_t)inst->totp_time_drift;
+   time_cleanup  -= (time_t)(inst->try_prev * inst->totp_x);
 
-   while( (root->next != NULL) && (root->invalid_until < time_cleanup) )
+   while( (root->next != NULL) && (root->next != root) )
+   {  if (root->invalid_until > time_cleanup)
+         return;
       rbtree_deletebydata(inst->cache_tree, root->next);
+   };
 
    return;
 }
