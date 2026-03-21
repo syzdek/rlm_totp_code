@@ -148,7 +148,10 @@ struct rlm_totp_code_t
    uint32_t                totp_t0;                //!< Unix time to start counting time steps (default: 0)
    uint32_t                totp_x;                 //!< time step in seconds (default: 30 seconds)
    int32_t                 totp_time_offset;       //!< adjust current time by seconds
+   uint32_t                totp_time_drift;        //!< adjust current time by seconds at runtime
    uint32_t                otp_length;             //!< length of output TOTP code
+   uint32_t                try_prev;               //!< number of steps to look back to authenticate code
+   uint32_t                try_next;               //!< number of steps to look forward to authenticate code
    bool                    allow_override;         //!< allow TOTP parameters to be overriden by RADIUS attributes
    bool                    allow_reuse;            //!< allow TOTP codes to be re-used
    bool                    devel_debug;            //!< enable extra debug messages for developer
@@ -180,8 +183,10 @@ struct _totp_params
 {  uint64_t                totp_t0;          //!< Unix time to start counting time steps
    uint64_t                totp_x;           //!< time step in seconds
    uint64_t                totp_time;        //!< current Unix time
-   int64_t                 totp_time_offset; //!< amount of seconds to adjust .totp_time
+   int64_t                 totp_time_offset; //!< amount of seconds to adjust .totp_time (set by config)
+   int64_t                 totp_time_drift;  //!< amount of seconds to adjust .totp_time (used at runtime)
    uint64_t                totp_t;           //!< number of time steps since t0
+   uint64_t                totp_t_drift;     //!< number of time steps to adjust .totp_t (used at runtime)
    uint64_t                totp_algo;        //!< HMAC algorithm
    uint64_t                otp_length;       //!< requested length of One-Time-Password
    size_t                  key_len;          //!< length of HMAC key
@@ -420,6 +425,9 @@ static const CONF_PARSER module_config[] =
 {  {  "start_time",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_t0),                "0" },
    {  "time_step",         FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_x),                 "30" },
    {  "time_offset",       FR_CONF_OFFSET(PW_TYPE_SIGNED,   rlm_totp_code_t, totp_time_offset),       "0" },
+   {  "time_drift",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_time_drift),        "0" },
+   {  "try_previous",      FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, try_prev),               "0" },
+   {  "try_next",          FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, try_next),               "0" },
    {  "otp_length",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, otp_length),             "6" },
    {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),            "no" },
    {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),         "no" },
@@ -513,6 +521,11 @@ mod_authenticate(
 {
    int                     rc;
    int                     code;
+   int                     step;
+   int                     steps_max;
+   int                     drift;
+   int                     drift_max;
+   int64_t                 drifts[3];
    size_t                  key_len;
    uint8_t *               key;
    VALUE_PAIR *            pass_vp;
@@ -534,6 +547,7 @@ mod_authenticate(
    if ((rc = totp_algo_params_set(instance, request, &params)) != 0)
       return(RLM_MODULE_REJECT);
 
+   invalid_until = 0;
    if (inst->allow_reuse == false)
    {  totp_cache_query(instance, request, &invalid_until);
       now = params.totp_time + params.totp_time_offset;
@@ -572,15 +586,38 @@ mod_authenticate(
    params.key     = key;
    params.key_len = key_len;
 
-   code = totp_algo_calculate(&params);
-   totp_algo_debug(instance, request, &params);
-   if (code < 0)
-      return(RLM_MODULE_REJECT);
+   steps_max             = 1;
+   steps_max            += inst->try_next;
+   steps_max            += inst->try_prev;
+   params.totp_t_drift   = 0 - (signed)inst->try_prev;
 
-   // compare codes
-   if (params.otp_length == pass_vp->length)
-      if (!(memcmp(params.otp, pass_vp->data.octets, pass_vp->length)))
-         return(RLM_MODULE_OK);
+   if ((inst->totp_time_drift))
+   {  drift_max          = 3;
+      drifts[0]          = 0 - (int64_t)inst->totp_time_drift;
+      drifts[1]          = 0;
+      drifts[2]          = (int64_t)inst->totp_time_drift;
+   } else
+   {  drift_max          = 1;
+      drifts[0]          = 0;
+   };
+
+   for(step = 0; (step < steps_max); step++)
+   {  for(drift = 0; (drift < drift_max); drift++)
+      {  params.totp_time_drift = drifts[drift];
+
+         // calculate TOTP code
+         code = totp_algo_calculate(&params);
+         totp_algo_debug(instance, request, &params);
+         if (code < 0)
+            continue;
+
+         // compare codes
+         if (params.otp_length == pass_vp->length)
+            if (!(memcmp(params.otp, pass_vp->data.octets, pass_vp->length)))
+               return(RLM_MODULE_OK);
+      };
+      params.totp_t_drift++;
+   };
 
    return(RLM_MODULE_REJECT);
 }
@@ -1285,7 +1322,9 @@ totp_algo_calculate(
    // calculate interval count
    params->totp_t     = params->totp_time - params->totp_t0;
    params->totp_t    += params->totp_time_offset;
+   params->totp_t    += params->totp_time_drift;
    params->totp_t    /= params->totp_x;
+   params->totp_t    += params->totp_t_drift;
 
    // copy interval count into data buffer
    data[0]  = (params->totp_t >> 56) & 0xff;
