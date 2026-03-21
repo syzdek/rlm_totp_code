@@ -306,6 +306,7 @@ static int
 totp_cache_query(
          void *                        instance,
          REQUEST *                     request,
+         totp_params_t *               params,
          time_t *                      invalid_untilp );
 
 
@@ -549,7 +550,7 @@ mod_authenticate(
 
    invalid_until = 0;
    if (inst->allow_reuse == false)
-   {  totp_cache_query(instance, request, &invalid_until);
+   {  totp_cache_query(instance, request, &params, &invalid_until);
       now = params.totp_time + params.totp_time_offset;
       if ( (now < invalid_until) && (invalid_until != 0) )
       {  RDEBUG2("TOTP code has been utilized. Next TOTP code will be available in %us", (unsigned)(invalid_until-now));
@@ -1179,6 +1180,7 @@ int
 totp_cache_query(
          void *                        instance,
          REQUEST *                     request,
+         totp_params_t *               params,
          time_t *                      invalid_untilp )
 {
    int                     rc;
@@ -1199,11 +1201,17 @@ totp_cache_query(
    if (rc == -1)
       return(-1);
 
-   // lookup cache entry
    pthread_mutex_lock(inst->mutex);
+
+   // clean up stale entries from cache
+   if ((params))
+      totp_cache_cleanup(instance, params);
+
+   // lookup cache entry
    result = rbtree_finddata(inst->cache_tree, &cache_key);
    if (result != NULL)
       *invalid_untilp = result->invalid_until;
+
    pthread_mutex_unlock(inst->mutex);
 
    return( (*invalid_untilp == -1) ? -1 : 0 );
@@ -1727,7 +1735,7 @@ totp_xlat_code(
    };
 
    if (inst->allow_reuse == false)
-   {  totp_cache_query(instance, request, &invalid_until);
+   {  totp_cache_query(instance, request, &params, &invalid_until);
       now = params.totp_time + params.totp_time_offset;
       if ( (now < invalid_until) && (invalid_until != 0) )
       {  RDEBUG2("TOTP code has been utilized. Next TOTP code will be available in %us", (unsigned)(invalid_until-now));
