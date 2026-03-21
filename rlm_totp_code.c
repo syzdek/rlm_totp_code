@@ -102,6 +102,9 @@
 #define TOTP_SCOPE_REPLY            1
 #define TOTP_SCOPE_REQUEST          2
 
+#define RLM_TOTP_CACHE_EXPIRED      0
+#define RLM_TOTP_CACHE_FAILED       1
+
 #ifdef EVP_MAX_MD_SIZE
 #   define RLM_TOTP_DIGEST_LENGTH   EVP_MAX_MD_SIZE
 #else
@@ -152,6 +155,7 @@ struct rlm_totp_code_t
    uint32_t                otp_length;             //!< length of output TOTP code
    uint32_t                try_prev;               //!< number of steps to look back to authenticate code
    uint32_t                try_next;               //!< number of steps to look forward to authenticate code
+   uint32_t                max_attempts;           //!< maximum allowed attempts per time period
    bool                    allow_override;         //!< allow TOTP parameters to be overriden by RADIUS attributes
    bool                    allow_reuse;            //!< allow TOTP codes to be re-used
    bool                    devel_debug;            //!< enable extra debug messages for developer
@@ -174,6 +178,8 @@ struct _totp_cache_entry
 {  uint8_t *               key;              //!< value of User-Name attribute
    size_t                  keylen;           //!< length of User-Name attribute
    time_t                  invalid_until;    //!< epoch time when last used code will expire
+   time_t                  failed_expires;   //!< epoch time when failed attempt count expires
+   size_t                  failed_count;     //!< failed attempt count
    totp_cache_entry_t *    prev;
    totp_cache_entry_t *    next;
 };
@@ -311,10 +317,11 @@ totp_cache_query(
 
 
 static int
-totp_cache_set_expired(
+totp_cache_update(
          void *                        instance,
          REQUEST *                     request,
-         totp_params_t *               params );
+         totp_params_t *               params,
+         int                           action );
 
 
 //----------------------//
@@ -429,6 +436,7 @@ static const CONF_PARSER module_config[] =
    {  "time_drift",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, totp_time_drift),        "0" },
    {  "try_previous",      FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, try_prev),               "0" },
    {  "try_next",          FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, try_next),               "0" },
+   {  "max_attempts",      FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, max_attempts),           "0" },
    {  "otp_length",        FR_CONF_OFFSET(PW_TYPE_INTEGER,  rlm_totp_code_t, otp_length),             "6" },
    {  "allow_reuse",       FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_reuse),            "no" },
    {  "allow_override",    FR_CONF_OFFSET(PW_TYPE_BOOLEAN,  rlm_totp_code_t, allow_override),         "no" },
@@ -840,7 +848,7 @@ mod_post_auth(
       return(RLM_MODULE_NOOP);
 
    // update cache
-   totp_cache_set_expired(instance, request, &params);
+   totp_cache_update(instance, request, &params, RLM_TOTP_CACHE_EXPIRED);
 
    return(RLM_MODULE_NOOP);
 }
@@ -1036,6 +1044,8 @@ totp_cache_cleanup(
    while( (root->next != NULL) && (root->next != root) )
    {  if (root->invalid_until > time_cleanup)
          return;
+      if (root->failed_expires > time_cleanup)
+         return;
       rbtree_deletebydata(inst->cache_tree, root->next);
    };
 
@@ -1219,23 +1229,40 @@ totp_cache_query(
 
 
 int
-totp_cache_set_expired(
+totp_cache_update(
          void *                        instance,
          REQUEST *                     request,
-         totp_params_t *               params )
+         totp_params_t *               params,
+         int                           action )
 {
    int                     rc;
    uint8_t                 cache_key_buff[MAX_STRING_LEN];
    rlm_totp_code_t *       inst;
    totp_cache_entry_t      cache_key;
    totp_cache_entry_t *    result;
-   uint64_t                invalid_until;
+   uint64_t                timestamp;
 
    rad_assert(instance != NULL);
    rad_assert(request  != NULL);
    rad_assert(params   != NULL);
 
    inst = instance;
+
+   // exit if nothing will be cached
+   switch(action)
+   {  case RLM_TOTP_CACHE_EXPIRED:
+         if ((inst->allow_reuse))
+            return(0);
+         break;
+
+      case RLM_TOTP_CACHE_FAILED:
+         if (!(inst->max_attempts))
+            return(0);
+         break;
+
+      default:
+         return(0);
+   };
 
    // configure cache key
    rc = totp_cache_entry_key(instance, request, &cache_key, cache_key_buff, sizeof(cache_key_buff));
@@ -1247,20 +1274,14 @@ totp_cache_set_expired(
    // clean up stale entries from cache
    totp_cache_cleanup(instance, params);
 
-   // calculates when cached entry should expire
-   invalid_until  = params->totp_time - params->totp_t0 + params->totp_time_offset;
-   invalid_until += params->totp_x - (invalid_until % params->totp_x);
-
-   // attempt to update existing entry
+   // attempt to retrieve existing entry
    result = rbtree_finddata(inst->cache_tree, &cache_key);
    if (result != NULL)
-   {  totp_cache_entry_unlink(result);
-      result->invalid_until = invalid_until;
-   };
+      totp_cache_entry_unlink(result);
 
    // add new entry to cache if does not already exist
    if (result == NULL)
-   {  result = totp_cache_entry_alloc(instance, cache_key.key, cache_key.keylen, invalid_until);
+   {  result = totp_cache_entry_alloc(instance, cache_key.key, cache_key.keylen, 0);
       if (result == NULL)
       {  REDEBUG2("unable to allocate memory for totp_cache_entry_t");
          pthread_mutex_unlock(inst->mutex);
@@ -1276,6 +1297,41 @@ totp_cache_set_expired(
    };
    result->next                     = inst->cache_list;
    inst->cache_list->prev           = result;
+
+   // update entry
+   switch(action)
+   {  case RLM_TOTP_CACHE_EXPIRED:
+         timestamp                = params->totp_time;
+         timestamp               -= params->totp_t0;
+         timestamp               += params->totp_time_offset;
+         timestamp               += params->totp_time_drift;
+         timestamp               += params->totp_t_drift * params->totp_x;
+         result->invalid_until    = timestamp;
+         result->invalid_until   += params->totp_x;
+         result->invalid_until   -= timestamp % params->totp_x;
+         result->invalid_until   += params->totp_t0;
+         break;
+
+      case RLM_TOTP_CACHE_FAILED:
+         if (result->failed_expires < (params->totp_time + params->totp_time_offset))
+            result->failed_count = 0;
+         timestamp                = params->totp_time;
+         timestamp               -= params->totp_t0;
+         timestamp               += params->totp_time_offset;
+         timestamp               += inst->totp_time_drift;
+         timestamp               += inst->try_next * params->totp_x;
+         result->failed_expires   = timestamp;
+         result->failed_expires  += params->totp_x;
+         result->failed_expires  -= timestamp % params->totp_x;
+         result->failed_expires  += params->totp_t0;
+         result->failed_count++;
+         if (result->failed_count >= inst->max_attempts)
+            result->invalid_until = result->failed_expires;
+         break;
+
+      default:
+         break;
+   };
 
    pthread_mutex_unlock(inst->mutex);
 
