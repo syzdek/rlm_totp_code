@@ -1049,6 +1049,11 @@ totp_cache_cleanup(
       rbtree_deletebydata(inst->cache_tree, root->next);
    };
 
+   if (inst->cache_list->prev == inst->cache_list)
+      inst->cache_list->prev = NULL;
+   if (inst->cache_list->next == inst->cache_list)
+      inst->cache_list->next = NULL;
+
    return;
 }
 
