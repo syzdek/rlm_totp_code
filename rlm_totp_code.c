@@ -1477,9 +1477,9 @@ totp_algo_debug(
    if (!(inst->devel_debug))
       return;
 
-   RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algo_algorithm_name((int)params->totp_algo));
-   RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params->totp_time);
-   RDEBUG("rlm_totp_code: totp_time_offset:  %i\n",  (int)params->totp_time_offset);
+   RDEBUG("rlm_totp_code: totp_algo:            %s\n",  totp_algo_algorithm_name((int)params->totp_algo));
+   RDEBUG("rlm_totp_code: totp_time:            %u\n",  (unsigned)params->totp_time);
+   RDEBUG("rlm_totp_code: totp_time_offset:     %i\n",  (int)params->totp_time_offset);
    RDEBUG("rlm_totp_code: totp_time_drift:      %i\n",  (int)params->totp_time_drift);
    RDEBUG("rlm_totp_code: totp_time_adjusted:   %i\n",  ((int)params->totp_time +  (int)params->totp_time_offset + (int)params->totp_time_drift));
    RDEBUG("rlm_totp_code: totp_t0:              %u\n",  (unsigned)params->totp_t0);
@@ -1487,10 +1487,10 @@ totp_algo_debug(
    RDEBUG("rlm_totp_code: totp_t:               %u\n",  (unsigned)params->totp_t);
    RDEBUG("rlm_totp_code: totp_t_drift:         %i\n",  (int)params->totp_t_drift);
    RDEBUG("rlm_totp_code: totp_t_adjusted:      %i\n",  ((int)params->totp_t + (int)params->totp_t_drift));
-   RDEBUG("rlm_totp_code: key:               <binary>\n");
-   RDEBUG("rlm_totp_code: key_len:           %u\n",  (unsigned)params->key_len);
-   RDEBUG("rlm_totp_code: result:            %s\n",  params->otp);
-   RDEBUG("rlm_totp_code: result_len:        %u\n",  (unsigned)params->otp_length);
+   RDEBUG("rlm_totp_code: key:                  <binary>\n");
+   RDEBUG("rlm_totp_code: key_len:              %u\n",  (unsigned)params->key_len);
+   RDEBUG("rlm_totp_code: result:               %s\n",  params->otp);
+   RDEBUG("rlm_totp_code: result_len:           %u\n",  (unsigned)params->otp_length);
 
    return;
 }
