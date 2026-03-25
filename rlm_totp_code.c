@@ -617,13 +617,20 @@ mod_authenticate(
          code = totp_algo_calculate(&params);
          totp_algo_debug(instance, request, &params);
          if (code < 0)
-         {  if (code == RLM_TOTP_EEXPIRED)
-            {  if ((step + 1) < steps_max)
-                  continue;
-               if ((drift + 1) < drift_max)
-                  continue;
-               RDEBUG2("TOTP is locked out due to reuse or too many attempts");
-            };
+         {  switch (code)
+            {
+               case RLM_TOTP_EEXPIRED:
+                  if ( ((step + 1) < steps_max) && (!(inst->devel_debug)) )
+                     continue;
+                  if ( ((drift + 1) < drift_max) && (!(inst->devel_debug)) )
+                     continue;
+                  RDEBUG2("TOTP is locked out due to reuse or too many attempts");
+                  break;
+
+               default:
+                  RDEBUG2("error generating TOTP code");
+                  break;
+            }
             continue;
          };
 
@@ -634,11 +641,14 @@ mod_authenticate(
                return(RLM_MODULE_OK);
             };
          };
+         if ((inst->devel_debug))
+            RDEBUG2("TOTP code does not match expected code");
       };
       params.totp_t_drift++;
    };
 
    totp_cache_update(instance, request, &params, RLM_TOTP_CACHE_FAILED);
+   RDEBUG2("failed TOTP authentication");
 
    return(RLM_MODULE_REJECT);
 }
@@ -1470,9 +1480,13 @@ totp_algo_debug(
    RDEBUG("rlm_totp_code: totp_algo:         %s\n",  totp_algo_algorithm_name((int)params->totp_algo));
    RDEBUG("rlm_totp_code: totp_time:         %u\n",  (unsigned)params->totp_time);
    RDEBUG("rlm_totp_code: totp_time_offset:  %i\n",  (int)params->totp_time_offset);
-   RDEBUG("rlm_totp_code: inst->totp_t0:     %u\n",  (unsigned)params->totp_t0);
-   RDEBUG("rlm_totp_code: inst->totp_x:      %u\n",  (unsigned)params->totp_x);
-   RDEBUG("rlm_totp_code: inst->totp_t:      %u\n",  (unsigned)params->totp_t);
+   RDEBUG("rlm_totp_code: totp_time_drift:      %i\n",  (int)params->totp_time_drift);
+   RDEBUG("rlm_totp_code: totp_time_adjusted:   %i\n",  ((int)params->totp_time +  (int)params->totp_time_offset + (int)params->totp_time_drift));
+   RDEBUG("rlm_totp_code: totp_t0:              %u\n",  (unsigned)params->totp_t0);
+   RDEBUG("rlm_totp_code: totp_x:               %u\n",  (unsigned)params->totp_x);
+   RDEBUG("rlm_totp_code: totp_t:               %u\n",  (unsigned)params->totp_t);
+   RDEBUG("rlm_totp_code: totp_t_drift:         %i\n",  (int)params->totp_t_drift);
+   RDEBUG("rlm_totp_code: totp_t_adjusted:      %i\n",  ((int)params->totp_t + (int)params->totp_t_drift));
    RDEBUG("rlm_totp_code: key:               <binary>\n");
    RDEBUG("rlm_totp_code: key_len:           %u\n",  (unsigned)params->key_len);
    RDEBUG("rlm_totp_code: result:            %s\n",  params->otp);
