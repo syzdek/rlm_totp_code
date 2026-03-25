@@ -373,7 +373,7 @@ totp_algo_hmac(
 
 
 static int
-totp_algo_params_set(
+totp_algo_params(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params );
@@ -561,7 +561,7 @@ mod_authenticate(
    key_len  = 0;
 
    // determine TOTP parameters
-   if ((rc = totp_algo_params_set(instance, request, &params)) != 0)
+   if ((rc = totp_algo_params(instance, request, &params)) != 0)
       return(RLM_MODULE_REJECT);
 
    // retrieve TOTP password
@@ -847,7 +847,7 @@ mod_post_auth(
    rad_assert(request   != NULL);
 
    // determine TOTP parameters
-   if ( totp_algo_params_set(instance, request, &params) != 0)
+   if ( totp_algo_params(instance, request, &params) != 0)
       return(RLM_MODULE_NOOP);
 
    // update cache
@@ -1524,7 +1524,7 @@ totp_algo_hmac(
 
 
 int
-totp_algo_params_set(
+totp_algo_params(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params )
@@ -1795,7 +1795,7 @@ totp_xlat_code(
    key_len  = 0;
 
    // determine TOTP parameters
-   if ((rc = totp_algo_params_set(instance, request, &params)) != 0)
+   if ((rc = totp_algo_params(instance, request, &params)) != 0)
    {  *out = '\0';
       return(-1);
    };
