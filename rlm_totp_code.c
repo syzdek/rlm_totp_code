@@ -204,6 +204,7 @@ struct _totp_params
    uint64_t                totp_t_drift;     //!< number of time steps to adjust .totp_t (used at runtime)
    uint64_t                totp_algo;        //!< HMAC algorithm
    uint64_t                otp_length;       //!< requested length of One-Time-Password [Digit]
+   uint64_t                invalid_until;    //!< epoch time when last used code will expire
    size_t                  key_len;          //!< length of HMAC key [K]
    const uint8_t *         key;              //!< HAMC key
    char                    otp[16];
@@ -322,7 +323,7 @@ totp_cache_query(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params,
-         time_t *                      invalid_untilp );
+         totp_cache_entry_t *          res );
 
 
 static int
@@ -550,8 +551,6 @@ mod_authenticate(
    VALUE_PAIR *            vp;
 	rlm_totp_code_t *       inst;
    totp_params_t           params;
-   time_t                  invalid_until;
-   time_t                  now;
 
    rad_assert(instance != NULL);
    rad_assert(request  != NULL);
@@ -564,16 +563,6 @@ mod_authenticate(
    // determine TOTP parameters
    if ((rc = totp_algo_params_set(instance, request, &params)) != 0)
       return(RLM_MODULE_REJECT);
-
-   invalid_until = 0;
-   if (inst->allow_reuse == false)
-   {  totp_cache_query(instance, request, &params, &invalid_until);
-      now = params.totp_time + params.totp_time_offset;
-      if ( (now < invalid_until) && (invalid_until != 0) )
-      {  RDEBUG2("TOTP code has been utilized. Next TOTP code will be available in %us", (unsigned)(invalid_until-now));
-         return(RLM_MODULE_REJECT);
-      };
-   };
 
    // retrieve TOTP password
    pass_vp = totp_request_vp_by_dict(instance, request, inst->vsa_pass, TOTP_SCOPE_REQUEST);
@@ -1210,20 +1199,20 @@ totp_cache_query(
          void *                        instance,
          REQUEST *                     request,
          totp_params_t *               params,
-         time_t *                      invalid_untilp )
+         totp_cache_entry_t *          res )
 {
    int                     rc;
    uint8_t                 cache_key_buff[MAX_STRING_LEN];
    rlm_totp_code_t *       inst;
    totp_cache_entry_t      cache_key;
-   totp_cache_entry_t *    result;
+   totp_cache_entry_t *    entry;
 
    rad_assert(instance        != NULL);
    rad_assert(request         != NULL);
-   rad_assert(invalid_untilp  != NULL);
+   rad_assert(res             != NULL);
 
    inst = instance;
-   *invalid_untilp = 0;
+   memset(res, 0, sizeof(totp_cache_entry_t));
 
    // configure cache key
    rc = totp_cache_entry_key(instance, request, &cache_key, cache_key_buff, sizeof(cache_key_buff));
@@ -1237,13 +1226,16 @@ totp_cache_query(
       totp_cache_cleanup(instance, params);
 
    // lookup cache entry
-   result = rbtree_finddata(inst->cache_tree, &cache_key);
-   if (result != NULL)
-      *invalid_untilp = result->invalid_until;
+   entry = rbtree_finddata(inst->cache_tree, &cache_key);
+   if (entry != NULL)
+   {  memcpy(res, entry, sizeof(totp_cache_entry_t));
+      res->next = NULL;
+      res->prev = NULL;
+   };
 
    pthread_mutex_unlock(inst->mutex);
 
-   return( (*invalid_untilp == -1) ? -1 : 0 );
+   return( (entry == NULL) ? -1 : 0 );
 }
 
 
@@ -1537,9 +1529,10 @@ totp_algo_params_set(
          REQUEST *                     request,
          totp_params_t *               params )
 {
-   VALUE_PAIR *         vp;
-   rlm_totp_code_t *    inst;
-   uint64_t             totp_algo;
+   VALUE_PAIR *            vp;
+   rlm_totp_code_t *       inst;
+   uint64_t                totp_algo;
+   totp_cache_entry_t      cache_entry;
 
    rad_assert(instance  != NULL);
    rad_assert(request   != NULL);
@@ -1572,6 +1565,9 @@ totp_algo_params_set(
             params->totp_algo = totp_algo;
       };
    };
+
+   totp_cache_query(instance, request, params, &cache_entry);
+   params->invalid_until = (uint64_t)cache_entry.invalid_until;
 
    return(0);
 }
@@ -1789,16 +1785,11 @@ totp_xlat_code(
    const char *            base32;
    char                    attr_str[MAX_STRING_LEN];
    VALUE_PAIR *            vp;
-	rlm_totp_code_t *       inst;
    totp_params_t           params;
-   time_t                  invalid_until;
-   time_t                  now;
 
    rad_assert(instance != NULL);
    rad_assert(request  != NULL);
    rad_assert(fmt      != NULL);
-
-   inst = instance;
 
    key      = NULL;
    key_len  = 0;
@@ -1807,16 +1798,6 @@ totp_xlat_code(
    if ((rc = totp_algo_params_set(instance, request, &params)) != 0)
    {  *out = '\0';
       return(-1);
-   };
-
-   if (inst->allow_reuse == false)
-   {  totp_cache_query(instance, request, &params, &invalid_until);
-      now = params.totp_time + params.totp_time_offset;
-      if ( (now < invalid_until) && (invalid_until != 0) )
-      {  RDEBUG2("TOTP code has been utilized. Next TOTP code will be available in %us", (unsigned)(invalid_until-now));
-         *out = '\0';
-         return(-1);
-      };
    };
 
    // skip leading white space
