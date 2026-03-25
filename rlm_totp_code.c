@@ -226,8 +226,7 @@ struct _totp_params
 static rlm_rcode_t
 mod_authenticate(
          void *                        instance,
-         REQUEST *                     request)
-         CC_HINT(nonnull);
+         REQUEST *                     request);
 
 
 static int
@@ -250,8 +249,7 @@ mod_instantiate(
 static rlm_rcode_t
 mod_post_auth(
          void *                        instance,
-         REQUEST *                     request)
-         CC_HINT(nonnull);
+         REQUEST *                     request);
 
 
 //-------------------//
