@@ -388,7 +388,7 @@ totp_algo_params_integer(
 
 
 int
-totp_algo_params_set_signed(
+totp_algo_params_signed(
          void *                        instance,
          REQUEST *                     request,
          const DICT_ATTR *             da,
@@ -1552,7 +1552,7 @@ totp_algo_params(
    if (inst->allow_override == false)
       return(0);
 
-   totp_algo_params_set_signed(instance, request, inst->vsa_time_offset, &params->totp_time_offset);
+   totp_algo_params_signed(instance, request, inst->vsa_time_offset, &params->totp_time_offset);
    totp_algo_params_integer(instance, request, inst->vsa_unix_time,  &params->totp_t0);
    totp_algo_params_integer(instance, request, inst->vsa_time_step,  &params->totp_x);
    totp_algo_params_integer(instance, request, inst->vsa_otp_length, &params->otp_length);
@@ -1628,7 +1628,7 @@ totp_algo_params_integer(
 
 
 int
-totp_algo_params_set_signed(
+totp_algo_params_signed(
          void *                        instance,
          REQUEST *                     request,
          const DICT_ATTR *             da,
