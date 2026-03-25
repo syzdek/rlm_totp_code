@@ -105,6 +105,9 @@
 #define RLM_TOTP_CACHE_EXPIRED      0
 #define RLM_TOTP_CACHE_FAILED       1
 
+#define RLM_TOTP_EUNKNOWN           -1
+#define RLM_TOTP_EEXPIRED           -2
+
 #ifdef EVP_MAX_MD_SIZE
 #   define RLM_TOTP_DIGEST_LENGTH   EVP_MAX_MD_SIZE
 #else
@@ -614,7 +617,15 @@ mod_authenticate(
          code = totp_algo_calculate(&params);
          totp_algo_debug(instance, request, &params);
          if (code < 0)
+         {  if (code == RLM_TOTP_EEXPIRED)
+            {  if ((step + 1) < steps_max)
+                  continue;
+               if ((drift + 1) < drift_max)
+                  continue;
+               RDEBUG2("TOTP is locked out due to reuse or too many attempts");
+            };
             continue;
+         };
 
          // compare codes
          if (params.otp_length == pass_vp->length)
@@ -849,7 +860,7 @@ mod_post_auth(
       return(RLM_MODULE_NOOP);
 
    // update cache
-   totp_cache_update(instance, request, &params, RLM_TOTP_CACHE_EXPIRED);
+   totp_cache_update(instance, request, &params, RLM_TOTP_CACHE_FAILED);
 
    return(RLM_MODULE_NOOP);
 }
@@ -1403,6 +1414,8 @@ totp_algo_calculate(
    params->totp_t    += params->totp_time_drift;
    params->totp_t    /= params->totp_x;
    params->totp_t    += params->totp_t_drift;
+   if (params->totp_t < (params->invalid_until / params->totp_x))
+      return(RLM_TOTP_EEXPIRED);
 
    // copy interval count into data buffer
    data[0]  = (params->totp_t >> 56) & 0xff;
@@ -1880,7 +1893,9 @@ totp_xlat_code(
    code = totp_algo_calculate(&params);
    totp_algo_debug(instance, request, &params);
    if (code < 0)
-   {  *out = '\0';
+   {  if (code == RLM_TOTP_EEXPIRED)
+         RDEBUG2("TOTP is locked out due to reuse or too many attempts");
+      *out = '\0';
       return(-1);
    };
 
