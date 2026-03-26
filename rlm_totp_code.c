@@ -861,6 +861,7 @@ mod_post_auth(
          REQUEST *                     request)
 {
    totp_params_t        params;
+   int                  action;
 
    rad_assert(instance  != NULL);
    rad_assert(request   != NULL);
@@ -869,8 +870,14 @@ mod_post_auth(
    if ( totp_algo_params(instance, request, &params) != 0)
       return(RLM_MODULE_NOOP);
 
+   switch(request->reply->code)
+   {  case PW_CODE_ACCESS_ACCEPT: action = RLM_TOTP_CACHE_EXPIRED; break;
+      case PW_CODE_ACCESS_REJECT: action = RLM_TOTP_CACHE_FAILED; break;
+      default: return(RLM_MODULE_NOOP);
+   };
+
    // update cache
-   totp_cache_update(instance, request, &params, RLM_TOTP_CACHE_FAILED);
+   totp_cache_update(instance, request, &params, action);
 
    return(RLM_MODULE_NOOP);
 }
