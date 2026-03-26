@@ -80,6 +80,27 @@ Module Configuration
      current UNIX time.  This can be used to increase or decrease the value
      of "_T_" used in RFC6238.  The default is "_0_".
 
+   * ___time_drift___ - specifies the number of seconds to drift the clock
+     when calculating the current UNIX time. When authenticating, the module
+     will test the sessions TOTP code against codes generated for the current
+     UNIX time minus ___time_drift___, the current UNIX time, and the current
+     UNIX time plus ___time_drift___.  This option is ignored by XLAT
+     expansions and if ___try_next__ or __try_previous___ options are
+     specified.  The value should be less than ___time_step___. The default
+     is "_0_".
+
+   * ___try_previous___ - specifies the number of previous TOTP codes used
+     to verify provided TOTP code when authenticating. This option is ignored
+     by XLAT expansions. The default is "_0_".
+
+   * ___try_next___ - specifies the number of upcoming TOTP codes used
+     to verify provided TOTP code when authenticating. This option is ignored
+     by XLAT expansions. The default is "_0_".
+
+   * ___max_attempts___ - specifies the number of authentication attempts to
+     allow before the current TOTP code is invalidated.  Setting the value to
+     "_0_" allows unlimited attempts. The default is "_0_".
+
    * ___allow_reuse___ - allows a user to re-use an One-Time-Password multiple
      times.  If this option is disabled, then an One-Time-Password may only be
      used once by a user.  The default is "_no_".
@@ -131,11 +152,18 @@ The following is a example configuration which uses the default values:
          time_step         = 30
          algorithm         = "sha1"
          time_offset       = 0
+         time_drift        = 0
+         try_previous      = 0
+         try_next          = 0
+         max_attempts      = 0
          otp_length        = 6
          allow_reuse       = false
          allow_override    = false
          devel_debug       = false
          vsa_cache_key     = "User-Name"
+         vsa_secret        = "TOTP-Secret"
+         vsa_key           = "TOTP-Key"
+         vsa_pass          = "TOTP-Password"
          vsa_time_offset   = "TOTP-Time-Offset"
       }
 
