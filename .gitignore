@@ -18,3 +18,5 @@ freeradius-server.tar.gz
 freeradius-server.tar.gz.tmp
 freeradius-server-*.*.*/
 xcuserdata
+/rlm_totp_code-*.*/
+/rlm_totp_code-*.*.tar*

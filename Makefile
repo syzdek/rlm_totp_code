@@ -31,6 +31,8 @@
 #   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+VERSION					:= $(shell git describe 2> /dev/null |sed -e 's/^v//g')
+
 FREERADIUS_SOURCE			?= freeradius-server
 
 MOD_DOC					:= $(FREERADIUS_SOURCE)/doc/modules/totp_code
@@ -39,8 +41,17 @@ SITE_CONFIG				:= $(FREERADIUS_SOURCE)/raddb/sites-available/totp_code
 ALL_MK					:= $(FREERADIUS_SOURCE)/src/modules/rlm_totp_code/all.mk
 MOD_SOURCE				:= $(FREERADIUS_SOURCE)/src/modules/rlm_totp_code/rlm_totp_code.c
 
+DIST_FILES				:= all.mk \
+					   COPYING.md \
+					   Makefile \
+					   README.md \
+					   rlm_totp_code.c \
+					   TODO.md \
+					   totp_code.mods-available \
+					   totp_code.sites-available \
 
-.PHONY: all prepare clean
+
+.PHONY: all prepare clean dist distclean
 
 all:
 	@echo " "
@@ -53,8 +64,26 @@ all:
 prepare:  $(MOD_DOC) $(MOD_CONFIG) $(SITE_CONFIG) $(ALL_MK) $(MOD_SOURCE)
 
 clean:
-	rm -f $(MOD_DOC) $(MOD_CONFIG) $(SITE_CONFIG) $(ALL_MK) $(MOD_SOURCE)
-	rm -Rf $(FREERADIUS_SOURCE)/src/modules/rlm_totp_code
+	rm -Rf rlm_totp_code-$(VERSION)/
+	rm -Rf rlm_totp_code-$(VERSION).tar
+
+dist:
+	test -e .git || exit 1;
+	test "x$(VERSION)" != "x" || exit 1;
+	rm -Rf rlm_totp_code-$(VERSION)
+	rm -Rf rlm_totp_code-$(VERSION).tar*
+	mkdir rlm_totp_code-$(VERSION)
+	cp -p $(DIST_FILES) rlm_totp_code-$(VERSION)/
+	tar -cvf rlm_totp_code-$(VERSION).tar rlm_totp_code-$(VERSION)/
+	gzip  --keep rlm_totp_code-$(VERSION).tar
+	bzip2 --keep rlm_totp_code-$(VERSION).tar
+	xz    --keep rlm_totp_code-$(VERSION).tar
+	rm -Rf rlm_totp_code-$(VERSION)/
+	rm -Rf rlm_totp_code-$(VERSION).tar
+
+distclean: clean
+	rm -Rf rlm_totp_code-$(VERSION).tar.xz
+
 
 $(MOD_DOC): README.md
 	cp README.md $(@)
