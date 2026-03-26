@@ -35,7 +35,7 @@ VERSION					:= $(shell git describe 2> /dev/null |sed -e 's/^v//g')
 
 FREERADIUS_SOURCE			?= freeradius-server
 
-MOD_DOC					:= $(FREERADIUS_SOURCE)/doc/modules/totp_code
+MOD_DOC					:= $(FREERADIUS_SOURCE)/doc/modules/rlm_totp_code
 MOD_CONFIG				:= $(FREERADIUS_SOURCE)/raddb/mods-available/totp_code
 SITE_CONFIG				:= $(FREERADIUS_SOURCE)/raddb/sites-available/totp_code
 ALL_MK					:= $(FREERADIUS_SOURCE)/src/modules/rlm_totp_code/all.mk
