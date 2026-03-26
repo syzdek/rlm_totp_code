@@ -70,7 +70,8 @@ Module Configuration
 
    * ___algorithm___ - specifies that HMAC algorithm to use to perform the
      calculations.  If not compiled with OpenSSL support, this option has no
-     affect. The default is "_sha1_".
+     affect. Valid values are _sha1_, _sha224_, _sha256_, _sha384_, and
+     _sha512_. The default is "_sha1_".
 
    * ___otp_length___ - specifies the number of digits of the One-Time-Password
      to return.  This is the value of "_Digit_" in RFC4226. The default is
@@ -85,17 +86,16 @@ Module Configuration
      will test the sessions TOTP code against codes generated for the current
      UNIX time minus ___time_drift___, the current UNIX time, and the current
      UNIX time plus ___time_drift___.  This option is ignored by XLAT
-     expansions and if ___try_next__ or __try_previous___ options are
-     specified.  The value should be less than ___time_step___. The default
-     is "_0_".
+     expansions if ___try_next__ or __try_previous___ options are specified.
+     The value should be less than ___time_step___. The default is "_0_".
 
    * ___try_previous___ - specifies the number of previous TOTP codes used
-     to verify provided TOTP code when authenticating. This option is ignored
-     by XLAT expansions. The default is "_0_".
+     to verify the provided TOTP code when authenticating. This option is
+     ignored by XLAT expansions. The default is "_0_".
 
    * ___try_next___ - specifies the number of upcoming TOTP codes used
-     to verify provided TOTP code when authenticating. This option is ignored
-     by XLAT expansions. The default is "_0_".
+     to verify the provided TOTP code when authenticating. This option is
+     ignored by XLAT expansions. The default is "_0_".
 
    * ___max_attempts___ - specifies the number of authentication attempts to
      allow before the current TOTP code is invalidated.  Setting the value to
@@ -166,6 +166,60 @@ The following is a example configuration which uses the default values:
          vsa_pass          = "TOTP-Password"
          vsa_time_offset   = "TOTP-Time-Offset"
       }
+
+
+Configuration Options Affect on TOTP
+------------------------------------
+
+When authenticating, the TOTP algorithm may be called in multiple passes in
+an attempt to validate the provided TOTP code.
+
+Attempt without ___try_previous___, ___try_next___, or ___time_drift___
+options and for XLAT expansions:
+
+    CurrentUnixTime   = NOW + time_offset
+    T                 = (CurrentUnixTime - start_time) / time_step
+    TOTP              = Truncate(HMAC_Algorithm(K, T)) % 10^otp_length
+
+   * _NOW_ is the current number of seconds since January 1, 1970
+
+Attempt with ___try_previous___ option:
+
+    CurrentUnixTime   = NOW + time_offset
+    T                 = (CurrentUnixTime - start_time) / time_step
+    AdjustedT         = T - TRY
+    TOTP              = Truncate(HMAC_Algorithm(K, AdjustedT)) % 10^otp_length
+
+   * _NOW_ is the current number of seconds since January 1, 1970
+   * _TRY_ is replaced with values between _0_ and ___try_previous___
+
+
+Attempt with ___try_next___ option:
+
+    CurrentUnixTime   = NOW + time_offset
+    T                 = CurrentUnixTime / time_step
+    AdjustedT         = T + TRY
+    TOTP              = Truncate(HMAC_Algorithm(K, AdjustedT)) % 10^otp_length
+
+   * _NOW_ is the current number of seconds since January 1, 1970
+   * _TRY_ is replaced with values between _0_ and ___try_next___
+
+
+First attempt with ___time_drift___ option:
+
+    CurrentUnixTime   = NOW + time_offset - time_drift
+    T                 = CurrentUnixTime / time_step
+    TOTP              = Truncate(HMAC_Algorithm(K, T)) % 10^otp_length
+
+   * _NOW_ is the current number of seconds since January 1, 1970
+
+Second attempt with ___time_drift___ option:
+
+    CurrentUnixTime   = NOW + time_offset + time_drift
+    T                 = CurrentUnixTime / time_step
+    TOTP              = Truncate(HMAC_Algorithm(K, T)) % 10^otp_length
+
+   * _NOW_ is the current number of seconds since January 1, 1970
 
 
 Module Usage
