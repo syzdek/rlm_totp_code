@@ -225,7 +225,7 @@ Second attempt with ___time_drift___ option:
 Module Usage
 ------------
 
-The following is an example of a server using TOTP and MS-CHAP:
+The following is an example of a server using TOTP for both PAP and MS-CHAP:
 
       server totp-code {
          authorize {
