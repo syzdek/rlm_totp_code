@@ -24,7 +24,8 @@ module included in FreeRADIUS:
    * _rlm_totp_code_ supports restricting the number of authentication
      attempts during an inidividual TOTP time period.
    * _rlm_totp_code_ allows TOTP configuration options to be overridden at
-     runtime using attributes defined per user. 
+     runtime using attributes defined per user.
+   * _rlm_totp_code_ can be used with PAP and MS-CHAP autentication.
 
 If FreeRADIUS is compiled with OpenSSL support, then additional HMAC
 algorithms are supported. Currently the following HMAC algorithms are
@@ -278,7 +279,7 @@ MS-CHAP:
             }
             
             # modify clear text password for use with CHAP and MSCHAP
-            if (&control:Cleartext-Password)
+            if (&control:Cleartext-Password) {
                # Generate expected TOTP code using XLAT expansion. The XLAT
                # expansion does not increment the failure count or expire
                # used codes.  The cache of failure counts and expired codes is
@@ -341,9 +342,10 @@ Unpack the source code:
 
     tar -xf freeradius-server-x.x.x.tar.gz
     tar -xf rlm_totp_code-x.x.tar.gz
-    mv rlm_totp_code-x.x freeradius-server-x.x.x/src/modules/rlm_totp_code
+    make -C rlm_totp_code-x.x FREERADIUS_SOURCE=../freeradius-server-x.x.x prepare
 
-Follow the for building FreeRADIUS server from source (see below for links).
+Follow the instructions for building FreeRADIUS server from source (see below
+for links).
 
 
 References
