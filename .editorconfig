@@ -15,4 +15,12 @@ trim_trailing_whitespace = false
 indent_style = tab
 indent_size = 8
 
+[GNUmakefile]
+indent_style = tab
+indent_size = 8
+
+[Makefile]
+indent_style = tab
+indent_size = 8
+
 # end of editor config
