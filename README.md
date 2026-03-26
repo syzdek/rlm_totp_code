@@ -227,13 +227,8 @@ Module Usage
 
 The following is an example of a server using TOTP and MS-CHAP:
 
-      server totp-mschap {
+      server totp-code {
          authorize {
-            # reject non-mschap authentication types
-            if (control:Auth-Type != "mschap") {
-               reject
-            }
-            
             # obtain the users' TOTP secret from a data store.  If the secret
             # is base32 encoded, set the secret to "&control:TOTP-Secret". If
             # the secret is binary, set the secret to "&control:TOTP-Key".
@@ -247,9 +242,13 @@ The following is an example of a server using TOTP and MS-CHAP:
             }
             
             # separate user password and TOTP password, then authenticate
-            # TOTP code.
-            if ( (&request:User-Password) && (&control:Password-With-Header) ) {
-               if (User-Password =~ /^(.*)([0-9]{6})$/) {
+            # TOTP code. The authenticate function increments the failure
+            # count and expires used codes.
+            if (&control:Password-With-Header) {
+               if (!&request:User-Password) {
+                  reject
+               }
+               elsif (User-Password =~ /^(.*)([0-9]{6})$/) {
                   update request {
                      User-Password := "%{1}"
                      TOTP-Password := "%{2}"
@@ -266,7 +265,10 @@ The following is an example of a server using TOTP and MS-CHAP:
             
             # modify clear text password for use with CHAP and MSCHAP
             if (&control:Cleartext-Password)
-               # generate expected TOTP code
+               # Generate expected TOTP code using XLAT expansion. The XLAT
+               # expansion does not increment the failure count or expire
+               # used codes.  The cache of failure counts and expired codes is
+               # updated in post-auth.
                update control {
                   Tmp-String-0 := "%{totp_code:&TOTP-Secret}"
                }
@@ -299,10 +301,14 @@ The following is an example of a server using TOTP and MS-CHAP:
             }
          }
          post-auth {
-            # records failure if the code was unsuccessfully verified.  Unable
-            # to detect reused codes with MSCHAP/CHAP.
+            # expires current code if the request was successful
+            if (&control:Cleartext-Password)  {
+               totp_code.post-auth
+            }
+            
             Post-Auth-Type REJECT {
-               if ( (&control:Auth-Type) && (control:Auth-Type == "mschap") ) {
+               # records failure if the request was rejected
+               if (&control:Cleartext-Password) {
                   totp_code.post-auth
                }
             }
