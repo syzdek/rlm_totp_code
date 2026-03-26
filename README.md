@@ -239,22 +239,58 @@ The following is an example of a server using TOTP and MS-CHAP:
             # the secret is binary, set the secret to "&control:TOTP-Key".
             -ldap
             -sql
-    
-            # generate OTP and set to the value of Cleartext-Password
-            update control {
-               Cleartext-Password := "%{totp_code:&TOTP-Secret}"
-            }
             
-            # verify that an error was not encountered generating the TOTP
-            # One-Time-Password
-            if ("%{control:Cleartext-Password}" !~ /^[0-9]{1,}$/) {
+            # reject if both Password-With-Header and Cleartext-Password are
+            # defined
+            if ( (&control:Cleartext-Password) && (&control:Password-With-Header) ) {
                reject
             }
             
+            # separate user password and TOTP password, then authenticate
+            # TOTP code.
+            if ( (&request:User-Password) && (&control:Password-With-Header) ) {
+               if (User-Password =~ /^(.*)([0-9]{6})$/) {
+                  update request {
+                     User-Password := "%{1}"
+                     TOTP-Password := "%{2}"
+                  }
+                  totp_code.authenticate
+                  if (!ok) {
+                     reject
+                  }
+               }
+               else {
+                  reject
+               }
+            }
+            
+            # modify clear text password for use with CHAP and MSCHAP
+            if (&control:Cleartext-Password)
+               # generate expected TOTP code
+               update control {
+                  Tmp-String-0 := "%{totp_code:&TOTP-Secret}"
+               }
+               
+               # verify that an error was not encountered generating the TOTP
+               # One-Time-Password
+               if ("%{control:Tmp-String-0}" !~ /^[0-9]{1,}$/) {
+                  reject
+               }
+               
+               # append TOTP code to end of clear text password
+               update control {
+                  Cleartext-Password := "%{control:Cleartext-Password}%{control:Tmp-String-0}"
+               }
+            }
+            
+            pap
             chap
             mschap
          }
          authenticate {
+            Auth-Type PAP {
+               pap
+            }
             Auth-Type CHAP {
                 chap
             }
@@ -263,13 +299,12 @@ The following is an example of a server using TOTP and MS-CHAP:
             }
          }
          post-auth {
-            # caches that the code was successfully verified in order to
-            # prevent the same code from being used again at a later time.
-            Auth-Type CHAP {
-                totp-code
-            }
-            Auth-Type MS-CHAP {
-               totp_code
+            # records failure if the code was unsuccessfully verified.  Unable
+            # to detect reused codes with MSCHAP/CHAP.
+            Post-Auth-Type REJECT {
+               if ( (&control:Auth-Type) && (control:Auth-Type == "mschap") ) {
+                  totp_code.post-auth
+               }
             }
          }
       }
