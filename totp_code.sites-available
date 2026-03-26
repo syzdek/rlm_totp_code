@@ -1,0 +1,91 @@
+#
+#  Example server using TOTP for PAP and MS-CHAPv2.
+#
+server totp-code {
+authorize {
+	# obtain the users' TOTP secret from a data store.  If the secret
+	# is base32 encoded, set the secret to "&control:TOTP-Secret". If
+	# the secret is binary, set the secret to "&control:TOTP-Key".
+	-ldap
+	-sql
+
+	# reject if both Password-With-Header and Cleartext-Password are
+	# defined
+	if ( (&control:Cleartext-Password) && (&control:Password-With-Header) ) {
+		reject
+	}
+
+	# separate user password and TOTP password, then authenticate
+	# TOTP code. The authenticate function increments the failure
+	# count and expires used codes.
+	if (&control:Password-With-Header) {
+		if (!&request:User-Password) {
+			reject
+		}
+		elsif (User-Password =~ /^(.*)([0-9]{6})$/) {
+			update request {
+				User-Password := "%{1}"
+				TOTP-Password := "%{2}"
+			}
+			totp_code.authenticate
+			if (!ok) {
+				reject
+			}
+		}
+		else {
+			reject
+		}
+	}
+
+	# modify clear text password for use with CHAP and MSCHAP
+	if (&control:Cleartext-Password) {
+		# Generate expected TOTP code using XLAT expansion. The XLAT
+		# expansion does not increment the failure count or expire
+		# used codes.  The cache of failure counts and expired codes is
+		# updated in post-auth.
+		update control {
+			Tmp-String-0 := "%{totp_code:&TOTP-Secret}"
+		}
+
+		# verify that an error was not encountered generating the TOTP
+		# One-Time-Password
+		if ("%{control:Tmp-String-0}" !~ /^[0-9]{1,}$/) {
+			reject
+		}
+
+		# append TOTP code to end of clear text password
+		update control {
+			Cleartext-Password := "%{control:Cleartext-Password}%{control:Tmp-String-0}"
+		}
+	}
+
+	pap
+	chap
+	mschap
+}
+authenticate {
+	Auth-Type PAP {
+		pap
+	}
+	Auth-Type CHAP {
+		chap
+	}
+	Auth-Type MS-CHAP {
+		mschap
+	}
+}
+post-auth {
+	# expires current code if the request was successful
+	if (&control:Cleartext-Password)  {
+		totp_code.post-auth
+	}
+
+	# records failure if the request was rejected
+	Post-Auth-Type REJECT {
+		if (&control:Cleartext-Password) {
+			totp_code.post-auth
+		}
+	}
+}
+
+}

@@ -1,0 +1,52 @@
+#
+#  Time-based One-Time Passwords (TOTP)
+#
+#  The TOTP Code Module for FreeRADIUS (rlm_totp_code) registers XLAT
+#  expansions and authentication methods which implement Time-Based One-Time
+#  Password Algorithm described in RFC 6238.
+#
+#  The per user secret should either be defined as a base-32 encoded string or
+#  or as an ocetet string.  Base-32 encoded values should be defined in
+#  "&control:TOTP-Secret".  Unencoded values should be defined in
+#  "&control:TOTP-Key".
+#
+#  The TOTP algorithm can be represented as:
+#
+#      T         = (CurrentUnixTime - T0) / X
+#      TOTP      = Truncate(HMAC_Algorithm(K, T)) % 10^Digit
+#
+#  Where:
+#    * CurrentUnixTime is the current number of seconds since January 1, 1970
+#    * T0 is number of seconds after January 1, 1970 to start counting step
+#    * X is the number of seconds in each step
+#    * T is the number of steps since T0
+#    * K is the shared secret
+#    * HMAC_Algorithm() is a HMAC algorithm function such as HMAC-SHA-1
+#    * Truncate() is a function which dynamically truncates the hash returned
+#      by HMAC_Algorithm() to a 31 bit unsigned integer. This function is
+#      defined in RFC 4226 Section 4.2.
+#    * Digits is the length of the derived password
+#    * TOTP is the derived password
+#
+#  For a complete list of configuration options, please refer to the README.md
+#  file included with the source of rlm_totp_code.
+#
+totp_code {
+	# default start time to use as the value of "T0" in the TOTP algorithm
+	start_time = 0
+
+	# default adjustment of current UNIX time.  This is the equivalent of
+	# setting CurrentUnixTime to be equal to "NOW + time_offset".
+	time_offset = 0
+
+	# default time step to use as the value of "X" in the TOTP algorithm
+	time_step = 30
+
+	# default hashing algorithm to use as by "HMAC_Algorithm()" in the
+	# TOTP algorithm
+	algorithm = "sha1"
+
+	# default length of the one-time password.  Defines the value of
+	# "Digit" in the TOTP algorithm
+	otp_length = 6
+}
