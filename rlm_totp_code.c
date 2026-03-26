@@ -732,9 +732,10 @@ mod_instantiate(
    pthread_mutex_init(inst->mutex, NULL);
 #endif // HAVE_PTHREAD_H
 
-   FR_INTEGER_BOUND_CHECK("time_step",    inst->totp_x,        >=, 5);
-   FR_INTEGER_BOUND_CHECK("otp_length",   inst->otp_length,    >=, 1);
-   FR_INTEGER_BOUND_CHECK("otp_length",   inst->otp_length,    <=, 9);
+   FR_INTEGER_BOUND_CHECK("time_step",    inst->totp_x,           >=, 1);
+   FR_INTEGER_BOUND_CHECK("otp_length",   inst->otp_length,       >=, 1);
+   FR_INTEGER_BOUND_CHECK("otp_length",   inst->otp_length,       <=, 9);
+   FR_INTEGER_BOUND_CHECK("time_drift",   inst->totp_time_drift,  <, inst->totp_x);
 
    if ((inst->totp_algo = totp_algo_algorithm_id(inst->totp_algo_str)) == -1)
    {  WARN("Ignoring \"algorithm = %s\", forcing to \"algorithm = SHA1\"", inst->totp_algo_str);
