@@ -840,17 +840,15 @@ mod_instantiate(
    };
 
    // initialize cache and list
-   if (!(inst->allow_reuse))
-   {  inst->cache_tree = rbtree_create(instance, totp_cache_entry_cmp, totp_cache_entry_free, 0);
-      if (inst->cache_tree == NULL)
-         return(-1);
-      inst->cache_list = talloc_size(instance, sizeof(totp_cache_entry_t));
-      if (inst->cache_list == NULL)
-      { rbtree_free(inst->cache_tree);
-         return(-1);
-      };
-      memset(inst->cache_list, 0, sizeof(totp_cache_entry_t));
+   inst->cache_tree = rbtree_create(instance, totp_cache_entry_cmp, totp_cache_entry_free, 0);
+   if (inst->cache_tree == NULL)
+      return(-1);
+   inst->cache_list = talloc_size(instance, sizeof(totp_cache_entry_t));
+   if (inst->cache_list == NULL)
+   { rbtree_free(inst->cache_tree);
+      return(-1);
    };
+   memset(inst->cache_list, 0, sizeof(totp_cache_entry_t));
 
    return(0);
 }
@@ -1067,6 +1065,12 @@ totp_cache_cleanup(
 
    inst           = instance;
    root           = inst->cache_list;
+
+   if (!(inst->cache_list))
+      return;
+   if (!(root->next))
+      return;
+
    time_cleanup   = (time_t)(params->totp_time + params->totp_time_offset);
    time_cleanup  -= (time_t)inst->totp_time_drift;
    time_cleanup  -= (time_t)(inst->try_prev * inst->totp_x);
@@ -1241,6 +1245,9 @@ totp_cache_query(
    inst = instance;
    memset(res, 0, sizeof(totp_cache_entry_t));
 
+   if (!(inst->cache_list))
+      return(-1);
+
    // configure cache key
    rc = totp_cache_entry_key(instance, request, &cache_key, cache_key_buff, sizeof(cache_key_buff));
    if (rc == -1)
@@ -1285,6 +1292,9 @@ totp_cache_update(
    rad_assert(params   != NULL);
 
    inst = instance;
+
+   if (!(inst->cache_list))
+      return(-1);
 
    // exit if nothing will be cached
    switch(action)
