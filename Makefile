@@ -31,7 +31,7 @@
 #   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-VERSION					:= $(shell git describe 2> /dev/null |sed -e 's/^v//g')
+VERSION					:= $(shell git describe 2> /dev/null |sed -e 's/^v//g' -e 's/-/./g')
 
 FREERADIUS_SOURCE			?= freeradius-server
 
@@ -51,7 +51,7 @@ DIST_FILES				:= all.mk \
 					   totp_code.sites-available \
 
 
-.PHONY: all prepare clean dist distclean
+.PHONY: all prepare clean dist distclean module
 
 all:
 	@echo " "
@@ -61,11 +61,14 @@ all:
 	@echo "       make FREERADIUS_SOURCE=../freeradius-server-x.x.x prepare"
 	@echo " "
 
+
 prepare:  $(MOD_DOC) $(MOD_CONFIG) $(SITE_CONFIG) $(ALL_MK) $(MOD_SOURCE)
 
-clean:
+
+clean: module-clean
 	rm -Rf rlm_totp_code-$(VERSION)/
-	rm -Rf rlm_totp_code-$(VERSION).tar
+	rm -Rf rlm_totp_code-*.*.tar
+
 
 dist:
 	test -e .git || exit 1;
@@ -73,34 +76,52 @@ dist:
 	rm -Rf rlm_totp_code-$(VERSION)
 	rm -Rf rlm_totp_code-$(VERSION).tar*
 	mkdir rlm_totp_code-$(VERSION)
-	cp -p $(DIST_FILES) rlm_totp_code-$(VERSION)/
-	tar -cvf rlm_totp_code-$(VERSION).tar rlm_totp_code-$(VERSION)/
+	cp $(DIST_FILES) rlm_totp_code-$(VERSION)/
+	tar --no-xattr --no-mac-metadata -cvf rlm_totp_code-$(VERSION).tar rlm_totp_code-$(VERSION)/
 	gzip  --keep rlm_totp_code-$(VERSION).tar
 	bzip2 --keep rlm_totp_code-$(VERSION).tar
 	xz    --keep rlm_totp_code-$(VERSION).tar
 	rm -Rf rlm_totp_code-$(VERSION)/
 	rm -Rf rlm_totp_code-$(VERSION).tar
 
-distclean: clean
-	rm -Rf rlm_totp_code-$(VERSION).tar.xz
+
+distclean: clean module-distclean
+	rm -Rf rlm_totp_code-*.*.tar.*
 
 
 $(MOD_DOC): README.md
 	cp README.md $(@)
 
+
 $(MOD_CONFIG): totp_code.mods-available
 	cp totp_code.mods-available $(@)
 
+
 $(SITE_CONFIG): totp_code.sites-available
 	cp totp_code.sites-available $(@)
+
 
 $(MOD_SOURCE): rlm_totp_code.c
 	@test -d $(FREERADIUS_SOURCE)/src/modules/rlm_totp_code || \
 		mkdir $(FREERADIUS_SOURCE)/src/modules/rlm_totp_code
 	cp rlm_totp_code.c $(@)
 
+
 $(ALL_MK): all.mk $(MOD_SOURCE)
 	cp all.mk $(@)
 
 
+module:
+	$(MAKE) -f Makefile.developer
+
+
+module-clean:
+	$(MAKE) -f Makefile.developer clean
+
+
+module-distclean:
+	$(MAKE) -f Makefile.developer distclean
+
+
 # end of Makefile
+

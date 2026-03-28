@@ -11,12 +11,10 @@
 .deps
 .dirstamp
 a.out
-freeradius/
-freeradius-server/
-freeradius-server.tmp/
-freeradius-server.tar.gz
-freeradius-server.tar.gz.tmp
-freeradius-server-*.*.*/
 xcuserdata
+/freeradius/
+/freeradius.tmp/
+/freeradius.tar.gz
+/freeradius.tar.gz.tmp
 /rlm_totp_code-*.*/
 /rlm_totp_code-*.*.tar*

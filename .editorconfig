@@ -28,4 +28,8 @@ indent_size = 8
 indent_style = tab
 indent_size = 8
 
+[Makefile.developer]
+indent_style = tab
+indent_size = 8
+
 # end of editor config

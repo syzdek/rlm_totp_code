@@ -1,0 +1,91 @@
+#
+#   TOTP Code Module for FreeRADIUS
+#   Copyright (C) 2026 David M. Syzdek <david@syzdek.net>.
+#   All rights reserved.
+#
+#   Redistribution and use in source and binary forms, with or without
+#   modification, are permitted provided that the following conditions are
+#   met:
+#
+#      1. Redistributions of source code must retain the above copyright
+#         notice, this list of conditions and the following disclaimer.
+#
+#      2. Redistributions in binary form must reproduce the above copyright
+#         notice, this list of conditions and the following disclaimer in the
+#         documentation and/or other materials provided with the distribution.
+#
+#      3. Neither the name of the copyright holder nor the names of its
+#         contributors may be used to endorse or promote products derived from
+#         this software without specific prior written permission.
+#
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+#   IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+#   THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+#   PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+#   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+#   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+#   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+#   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+#   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+#   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+#   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+DEVEL_FREERADIUS_VERSION		?= 3.2.8
+DEVEL_FREERADIUS_DOWNLOAD_URL		?= https://www.freeradius.org/ftp/pub/freeradius/freeradius-server-$(DEVEL_FREERADIUS_VERSION).tar.gz
+
+
+.PHONY: all prepare clean dist distclean module
+
+all: freeradius/destdir/lib/rlm_totp_code.la
+
+
+clean:
+	rm -Rf freeradius/destdir freeradius.tar.gz.tmp freeradius.tmp
+
+
+distclean: clean
+	rm -Rf freeradius.tar.gz freeradius
+
+
+freeradius.tar.gz:
+	@rm -f $(@) $(@).tmp
+	wget -O $(@).tmp $(DEVEL_FREERADIUS_DOWNLOAD_URL) || rm -f $(@).tmp
+	mv $(@).tmp $(@) || rm -f $(@).tmp
+
+
+freeradius/VERSION: freeradius.tar.gz
+	@rm -Rf freeradius freeradius.tmp
+	mkdir freeradius.tmp
+	tar	-C freeradius.tmp \
+		-xf freeradius.tar.gz \
+		--strip-components=1 \
+		|| rm -Rf freeradius.tmp
+	$(MAKE) -f Makefile  FREERADIUS_SOURCE=freeradius.tmp prepare \
+		|| rm -Rf freeradius.tmp
+	mv freeradius.tmp freeradius \
+		|| rm -Rf freeradius.tmp
+	touch $(@)
+
+
+freeradius/src/include/autoconf.h: freeradius/VERSION
+	cd freeradius && ./configure \
+		--prefix=$(shell pwd)/freeradius/destdir \
+		--with-talloc-lib-dir=/opt/local/lib \
+		--with-talloc-include-dir=/opt/local/include \
+		--with-openssl-lib-dir=/opt/local/lib \
+		--with-openssl-include-dir=/opt/local/include
+
+
+freeradius/src/modules/rlm_totp_code/rlm_totp_code.c: rlm_totp_code.c
+	$(MAKE) -f Makefile FREERADIUS_SOURCE=freeradius prepare
+	@touch $(@)
+
+
+freeradius/destdir/lib/rlm_totp_code.la: freeradius/src/include/autoconf.h freeradius/src/modules/rlm_totp_code/rlm_totp_code.c
+	cd freeradius && make -j 8
+	cd freeradius && make install
+	touch $(@)
+
+
+# end of Makefile
